@@ -1,9 +1,8 @@
 import React from "react";
 function Testzeyn() {
  
-
   return (
-    <div className="container_zeyn" style={{ backgroundColor: "#cb0f0f" }}>
+    <div className="container_zeyn" style={{ backgroundColor: "#0f1fcb" }}>
       <h1>Test Zeyn</h1>
     </div>
   );
