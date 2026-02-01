@@ -3,7 +3,7 @@ function Container_paniki() {
  
   return (
     <div className="container_zeyn" style={{ backgroundColor: "#933e3e" }}>
-      <h1>TEST VISITOR</h1>
+      <h1>VISITOR PANIKI & TELING</h1>
     </div>
   );
 }
