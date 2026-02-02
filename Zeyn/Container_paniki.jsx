@@ -3,7 +3,7 @@ function Container_paniki() {
  
   return (
     <div className="container_zeyn" style={{ backgroundColor: "#933e3e" }}>
-      <h1>VISITOR PANIKI & TELING dari PC HITAM</h1>
+      <h1>MUNCUL GA DI PC PUTIH NIH?</h1>
     </div>
   );
 }
