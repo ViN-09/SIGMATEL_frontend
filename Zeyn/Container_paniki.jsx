@@ -3,7 +3,7 @@ function Container_paniki() {
  
   return (
     <div className="container_zeyn" style={{ backgroundColor: "#933e3e" }}>
-      <h1>MUNCUL GA DI PC PUTIH NIH?</h1>
+      <h1>test di laptop zein</h1>
     </div>
   );
 }
