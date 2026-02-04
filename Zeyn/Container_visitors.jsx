@@ -21,12 +21,12 @@ function Container_visitors() {
 
   return (
     <div className="container_zeyn" style={{ backgroundColor: "#933e3e" }}>
-      <h1>Connect Visitors</h1>
+      
       {loading ? (
         <p>Loading...</p> // Menampilkan loading jika data sedang diambil
       ) : (
         <div>
-          <h2>Daftar Visitors</h2>
+          <h2>Buku Tamu Bulanan</h2>
           <table className="table">
             <thead>
               <tr>
