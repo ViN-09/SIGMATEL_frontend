@@ -23,6 +23,7 @@ export default function VisitorRegister() {
     visitId: "",
     activity: "",
     workspace: "",
+    status: "Pending",  // Menambahkan status
   });
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function VisitorRegister() {
 
     try {
       const res = await fetch(
-        `http://${host}/api/${ttc}/visitor/registry`,
+        `http://${host}/api/ttc_paniki/visitors/add`,  // Mengganti endpoint sesuai dengan API route
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
