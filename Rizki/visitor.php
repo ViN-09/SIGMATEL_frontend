@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 
 class visitor extends Controller
@@ -23,7 +24,7 @@ class visitor extends Controller
                     'time' => Carbon::now('Asia/Makassar'),
                 ]);
         } catch (\Exception $e) {
-            \Log::error('Gagal insert user_activity: ' . $e->getMessage());
+            Log::error('Gagal insert user_activity: ' . $e->getMessage());
         }
     }
  public function registvisitor(Request $request)

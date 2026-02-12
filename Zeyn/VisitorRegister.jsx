@@ -2,18 +2,24 @@ import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./VisitorRegister.css";
+import Swal from "sweetalert2";
 
 export default function VisitorRegister() {
-  // Set session 'azure-beaver-930369.hostingersite.com'     ----  192.168.1.22:8000;
-  sessionStorage.setItem("host", '192.168.1.22:8000');
-  sessionStorage.setItem("ttc", "ttc_Paniki");
+  /* ===============================
+     KONFIGURASI BACKEND
+  =============================== */
+  sessionStorage.setItem("host", "127.0.0.1:8000");
+  sessionStorage.setItem("ttc", "ttc_paniki");
 
-  const ttc = sessionStorage.getItem("ttc");
   const host = sessionStorage.getItem("host");
 
   const navigate = useNavigate();
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+
+  /* ===============================
+     STATE FORM
+  =============================== */
   const [formData, setFormData] = useState({
     name: "",
     company: "",
@@ -23,27 +29,42 @@ export default function VisitorRegister() {
     visitId: "",
     activity: "",
     workspace: "",
-    status: "Pending",  // Menambahkan status
   });
 
+  /* ===============================
+     INIT CANVAS
+  =============================== */
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "#000";
+    ctx.strokeStyle = "#000000";
   }, []);
 
+  /* ===============================
+     FORM HANDLER
+  =============================== */
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
+  /* ===============================
+     SIGNATURE DRAW
+  =============================== */
   const getPointerPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
   };
 
   const startDrawing = (e) => {
@@ -65,7 +86,7 @@ export default function VisitorRegister() {
   };
 
   const stopDrawing = (e) => {
-    e && e.preventDefault();
+    if (e) e.preventDefault();
     setIsDrawing(false);
   };
 
@@ -73,64 +94,119 @@ export default function VisitorRegister() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
+  /* ===============================
+     SUBMIT FORM
+  =============================== */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const signatureData = canvasRef.current.toDataURL("image/png");
-    const payload = { ...formData, signature: signatureData };
+
+    const signature = canvasRef.current.toDataURL("image/png");
+
+    // VALIDASI CLIENT SIDE
+    if (!signature || signature.length < 100) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Tanda tangan wajib diisi",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      signature,
+    };
+
+    console.log("Payload dikirim ke API:", payload);
 
     try {
-      const res = await fetch(
-        `http://${host}/api/ttc_paniki/visitors/add`,  // Mengganti endpoint sesuai dengan API route
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`http://${host}/api/ttc_paniki/visitors/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
-        alert(`Gagal: ${data.message || "Server error"}`);
-        console.error("Server response error:", data);
+      if (!response.ok || !data?.success) {
+        console.error("Error response:", data);
+        await Swal.fire({
+          icon: "error",
+          title: "Gagal menyimpan data",
+          text: data?.message || "Terjadi kesalahan",
+          footer: data?.error ? `<pre style="text-align:left;white-space:pre-wrap">${data.error}</pre>` : "",
+          confirmButtonText: "OK",
+        });
         return;
       }
 
-      // Redirect ke Guest.jsx dengan state visitor
-      navigate("/guest", { state: { visitor: data.data } });
+      // ✅ SUKSES: tampilkan notif dulu, baru pindah halaman
+      await Swal.fire({
+        icon: "success",
+        title: "Berhasil!",
+        text: "Data tamu berhasil disimpan.",
+        timer: 1300,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      });
 
-    } catch (err) {
-      console.error("Fetch error:", err);
-      alert("Gagal mengirim data, cek koneksi atau server");
+      navigate("/guest", {
+        state: {
+          visitor: data.data,
+        },
+      });
+    } catch (error) {
+      console.error("Fetch error:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Gagal koneksi ke server",
+        text: "Cek koneksi / server API kamu.",
+        confirmButtonText: "OK",
+      });
     }
   };
 
+  /* ===============================
+     RENDER
+  =============================== */
   return (
     <div className="visitor-register">
       <div className="register-card">
         <h2 className="register-title">Form Registrasi Tamu</h2>
-        <form onSubmit={handleSubmit} className="register-form">
+
+        <form className="register-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label><i className="bi bi-person-fill"></i> Nama Lengkap</label>
+            <label>
+              <i className="bi bi-person-fill" /> Nama Lengkap
+            </label>
             <input name="name" value={formData.name} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-building"></i> Perusahaan</label>
+            <label>
+              <i className="bi bi-building" /> Perusahaan
+            </label>
             <input name="company" value={formData.company} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-telephone"></i> Nomor Telepon</label>
+            <label>
+              <i className="bi bi-telephone" /> Nomor Telepon
+            </label>
             <input name="phone" value={formData.phone} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-card-text"></i> Jenis ID</label>
+            <label>
+              <i className="bi bi-card-text" /> Jenis ID
+            </label>
             <select name="idType" value={formData.idType} onChange={handleChange}>
               <option value="KTP">KTP</option>
               <option value="SIM">SIM</option>
@@ -140,22 +216,30 @@ export default function VisitorRegister() {
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-hash"></i> Nomor ID</label>
+            <label>
+              <i className="bi bi-hash" /> Nomor ID
+            </label>
             <input name="idNumber" value={formData.idNumber} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-key"></i> No. VISIT/ESIK</label>
+            <label>
+              <i className="bi bi-key" /> No. VISIT / ESIK
+            </label>
             <input name="visitId" value={formData.visitId} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-pencil-square"></i> Aktivitas</label>
+            <label>
+              <i className="bi bi-pencil-square" /> Aktivitas
+            </label>
             <textarea name="activity" value={formData.activity} onChange={handleChange} required />
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-grid-1x2"></i> Ruang Kerja</label>
+            <label>
+              <i className="bi bi-grid-1x2" /> Ruang Kerja
+            </label>
             <select name="workspace" value={formData.workspace} onChange={handleChange} required>
               <option value="">-- Pilih Ruang Kerja --</option>
               <option value="Outdoor">Outdoor</option>
@@ -166,7 +250,9 @@ export default function VisitorRegister() {
           </div>
 
           <div className="form-group">
-            <label><i className="bi bi-brush"></i> Tanda Tangan</label>
+            <label>
+              <i className="bi bi-brush" /> Tanda Tangan
+            </label>
             <div className="signature-container">
               <canvas
                 ref={canvasRef}
@@ -184,7 +270,8 @@ export default function VisitorRegister() {
           </div>
 
           <button type="submit" className="btn-register">
-            <i className="bi bi-check-circle me-2"></i> Daftar Sekarang
+            <i className="bi bi-check-circle me-2" />
+            Daftar Sekarang
           </button>
         </form>
       </div>
