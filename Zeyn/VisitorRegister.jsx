@@ -8,13 +8,30 @@ const SITES = {
   teling: { label: "TTC Teling", ttc: "ttc_teling", host: "127.0.0.1:8000" },
 };
 
+const INITIAL_FORM = {
+  name: "",
+  company: "",
+  phone: "",
+  idType: "KTP",
+  idNumber: "",
+  visitId: "",
+  activity: "",
+  workspace: "",
+};
+
 export default function VisitorRegister() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // masih boleh dipakai kalau nanti mau navigate
   const canvasRef = useRef(null);
+  const nameInputRef = useRef(null);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [siteKey, setSiteKey] = useState(() => sessionStorage.getItem("siteKey") || "");
+  const [formData, setFormData] = useState(INITIAL_FORM);
+
+  // notif di halaman
+  const [notice, setNotice] = useState({ type: "", text: "" }); // type: "success" | "error" | ""
 
   useEffect(() => {
     if (!siteKey) return;
@@ -31,17 +48,7 @@ export default function VisitorRegister() {
     return `http://${host}/api/${ttc}/visitor/registry`;
   }, [host, ttc]);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    company: "",
-    phone: "",
-    idType: "KTP",
-    idNumber: "",
-    visitId: "",
-    activity: "",
-    workspace: "",
-  });
-
+  // init canvas saat step 2
   useEffect(() => {
     if (step !== 2) return;
     const canvas = canvasRef.current;
@@ -54,9 +61,15 @@ export default function VisitorRegister() {
     ctx.lineJoin = "round";
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#000";
+
+    // fokus ke input nama saat masuk step 2
+    setTimeout(() => nameInputRef.current?.focus(), 0);
   }, [step]);
 
-  const handleChange = (e) => setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setNotice({ type: "", text: "" }); // bersihkan notif saat user mengetik
+    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+  };
 
   const getPointerPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -88,35 +101,47 @@ export default function VisitorRegister() {
 
   const clearSignature = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
+  const resetForm = () => {
+    setFormData(INITIAL_FORM);
+    clearSignature();
+    // fokus balik ke nama biar cepat input berikutnya
+    setTimeout(() => nameInputRef.current?.focus(), 0);
+  };
+
   const goNext = () => {
     if (!siteKey) {
-      alert("Pilih lokasi dulu (Teling / Paniki).");
+      setNotice({ type: "error", text: "Pilih lokasi dulu (Teling / Paniki)." });
       return;
     }
+    setNotice({ type: "", text: "" });
     setStep(2);
   };
 
   const goBack = () => {
+    setNotice({ type: "", text: "" });
     setStep(1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setNotice({ type: "", text: "" });
+
     if (!endpoint) {
-      alert("Lokasi belum dipilih.");
+      setNotice({ type: "error", text: "Lokasi belum dipilih." });
       return;
     }
     if (isSubmitting) return;
 
     setIsSubmitting(true);
 
-    const signatureData = canvasRef.current.toDataURL("image/png");
+    const signatureData = canvasRef.current?.toDataURL("image/png") || "";
     const payload = { ...formData, signature: signatureData };
 
     try {
@@ -129,15 +154,21 @@ export default function VisitorRegister() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(`Gagal: ${data.message || "Server error"}`);
+        setNotice({ type: "error", text: `Gagal: ${data.message || "Server error"}` });
         console.error("Server response error:", data);
         return;
       }
 
-      navigate("/guest", { state: { visitor: data.data } });
+      // ✅ SUKSES: tampil notif + reset form
+      setNotice({ type: "success", text: "Data berhasil disimpan. Silakan isi data tamu berikutnya." });
+      resetForm();
+
+      // ❌ tidak navigate ke /guest agar bisa input berikutnya
+      // navigate("/guest", { state: { visitor: data.data } });
+
     } catch (err) {
       console.error("Fetch error:", err);
-      alert("Gagal mengirim data, cek koneksi atau server");
+      setNotice({ type: "error", text: "Gagal mengirim data, cek koneksi atau server." });
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +178,23 @@ export default function VisitorRegister() {
     <div className="visitor-register">
       <div className="register-card">
         <h2 className="register-title">Form Registrasi Tamu</h2>
+
+        {/* NOTIF */}
+        {notice.text && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontSize: 14,
+              border: "1px solid rgba(0,0,0,0.08)",
+              background: notice.type === "success" ? "rgba(25,135,84,0.12)" : "rgba(220,53,69,0.12)",
+            }}
+          >
+            <i className={`bi ${notice.type === "success" ? "bi-check-circle" : "bi-exclamation-triangle"} me-2`}></i>
+            {notice.text}
+          </div>
+        )}
 
         {/* ===== STEP 1: PILIH SITE ===== */}
         {step === 1 && (
@@ -175,11 +223,18 @@ export default function VisitorRegister() {
         {step === 2 && (
           <form onSubmit={handleSubmit} className="register-form">
             <div className="form-group" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button type="button" className="clear-btn" onClick={goBack}>
+              <button type="button" className="clear-btn" onClick={goBack} disabled={isSubmitting}>
                 <i className="bi bi-arrow-left"></i> Ganti Lokasi
               </button>
               <div style={{ fontSize: 14, opacity: 0.8 }}>
                 Lokasi: <b>{SITES[siteKey].label}</b>
+              </div>
+
+              {/* tombol reset manual */}
+              <div style={{ marginLeft: "auto" }}>
+                <button type="button" className="clear-btn" onClick={resetForm} disabled={isSubmitting}>
+                  <i className="bi bi-arrow-counterclockwise"></i> Reset Form
+                </button>
               </div>
             </div>
 
@@ -187,7 +242,13 @@ export default function VisitorRegister() {
               <label>
                 <i className="bi bi-person-fill"></i> Nama Lengkap
               </label>
-              <input name="name" value={formData.name} onChange={handleChange} required />
+              <input
+                ref={nameInputRef}
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div className="form-group">
@@ -264,7 +325,7 @@ export default function VisitorRegister() {
                   onPointerUp={stopDrawing}
                   onPointerLeave={stopDrawing}
                 />
-                <button type="button" className="clear-btn" onClick={clearSignature}>
+                <button type="button" className="clear-btn" onClick={clearSignature} disabled={isSubmitting}>
                   Hapus
                 </button>
               </div>
