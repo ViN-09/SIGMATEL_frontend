@@ -4,10 +4,10 @@ import "./landing.css";
 import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import telkomselImg2 from "../assets/Telkomsel Logo.png";
-import telkomselImg1 from "../assets/telkom.png";
+import telkomselImg2 from "../../assets/Telkomsel Logo.png";
+import telkomselImg1 from "../../assets/telkom.png";
 import { Link } from "react-router-dom";
-import InfoTamu from "../component/InfoTamu"; // ✅ import popup InfoTamu
+import InfoTamu from "../../component/InfoTamu"; // ✅ import popup InfoTamu
 
 
 export default function Dashboard() {
