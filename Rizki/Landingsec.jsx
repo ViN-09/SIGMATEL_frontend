@@ -12,10 +12,12 @@ import InfoTamu from "../../component/InfoTamu"; // ✅ import popup InfoTamu
 
 export default function Dashboard() {
   const apiHost = sessionStorage.getItem("host");
- const user = JSON.parse(sessionStorage.getItem("userinfo"));
- const userID = user.id;
- console.log(user);
-  console.log(user.id);
+//  const user = JSON.parse(sessionStorage.getItem("userinfo"));
+//  const userID = user.id;
+//  console.log(user);
+//   console.log(user.id);
+const user = "TEST";
+ const userID = "TEST123";
   const [tamu, setTamu] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploading, setUploading] = useState({});

@@ -3,10 +3,22 @@ import { useNavigate } from "react-router-dom";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./VisitorRegister.css";
 
-const SITE = {
-  label: "TTC Paniki",
-  ttc: "ttc_paniki",
-  host: "127.0.0.1:8000",
+const SITES = {
+  teling: {
+    label: "TTC Teling",
+    ttc: "ttc_teling",
+    host: "127.0.0.1:8000",
+  },
+  paniki: {
+    label: "TTC Paniki",
+    ttc: "ttc_paniki",
+    host: "127.0.0.1:8000",
+  },
+}; 
+
+const getSiteFromURL = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("site") || "paniki";
 };
 
 const INITIAL_FORM = {
@@ -21,6 +33,8 @@ const INITIAL_FORM = {
 };
 
 export default function VisitorRegister() {
+  const siteKey = getSiteFromURL();
+const SITE = SITES[siteKey] || SITES.teling;
   const navigate = useNavigate(); 
   const canvasRef = useRef(null);
   const nameInputRef = useRef(null);
