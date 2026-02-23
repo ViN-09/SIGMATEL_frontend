@@ -18,7 +18,7 @@ const SITES = {
 
 const getSiteFromURL = () => {
   const params = new URLSearchParams(window.location.search);
-  return params.get("site") || "paniki";
+  return params.get("site") || "teling";
 };
 
 const INITIAL_FORM = {
