@@ -9,7 +9,6 @@ const HARDCODE_USERNAME = "zeyn";
 const HARDCODE_TTC = "ttc_paniki";
 const HARDCODE_API_HOST = "http://127.0.0.1:8000";
 
-/* ===================== Utils ===================== */
 function formatTanggalWaktu(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -17,24 +16,17 @@ function formatTanggalWaktu(ts) {
   return d.toLocaleString("id-ID");
 }
 
-/**
- * Karena kamu bilang file disimpan di: storage/app/public/visitors
- * dan biasanya diakses via symlink: public/storage/visitors/...
- * maka URL utamanya: {apiHost}/storage/visitors/{filename}
- *
- * Aku tetep kasih beberapa kandidat buat jaga-jaga, tapi "visitors" jadi prioritas.
- */
 function buildCandidates(apiHost, fileName) {
   if (!fileName || fileName === "-") return [];
   const clean = String(fileName).trim();
   if (!clean) return [];
 
   const base = apiHost.replace(/\/$/, "");
-  // cache busting biar gambar yang baru diupload langsung ke-refresh
+ 
   const bust = `?t=${Date.now()}`;
 
   return [
-    `${base}/storage/visitors/${clean}${bust}`, // ✅ sesuai folder kamu
+    `${base}/storage/visitors/${clean}${bust}`,
     `${base}/storage/visitor/${clean}${bust}`,
     `${base}/storage/dokumentasi/${clean}${bust}`,
     `${base}/storage/uploads/${clean}${bust}`,
@@ -53,17 +45,9 @@ function dataUrlToFile(dataUrl, filename = "capture.jpg") {
   return new File([u8arr], filename, { type: mime });
 }
 
-/**
- * Cari nama file hasil simpan dari response backend (kalau backend rename).
- * Sesuaikan key kalau backendmu beda.
- */
 function pickSavedFilename(json, type) {
   const key = type === "in" ? "dokumentasi_in" : "dokumentasi_out";
 
-  // kemungkinan pola umum:
-  // { success: true, data: { dokumentasi_in: "xxx.jpg" } }
-  // { success: true, visitor: { dokumentasi_in: "xxx.jpg" } }
-  // { success: true, data: { visitor: { dokumentasi_in: "xxx.jpg" } } }
   const v =
     json?.data?.[key] ??
     json?.visitor?.[key] ??
@@ -73,7 +57,7 @@ function pickSavedFilename(json, type) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
 
-/* ===================== Small Components ===================== */
+
 function ImageWithFallback({ apiHost, fileName, alt }) {
   const candidates = useMemo(() => buildCandidates(apiHost, fileName), [apiHost, fileName]);
   const [idx, setIdx] = useState(0);
@@ -198,7 +182,7 @@ function ModalInfo({ open, onClose, apiHost, tamu }) {
   );
 }
 
-/* ===================== Camera Modal ===================== */
+
 function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environment" }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -255,7 +239,6 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
     if (!open) return;
     start();
     return () => stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const captureAndSubmit = async () => {
@@ -409,7 +392,7 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
   );
 }
 
-/* ===================== Main ===================== */
+
 export default function Landingsec() {
   const username = HARDCODE_USERNAME;
   const ttc = HARDCODE_TTC;
@@ -432,13 +415,9 @@ export default function Landingsec() {
   const [tamu, setTamu] = useState([]);
   const [uploading, setUploading] = useState({});
   const [loading, setLoading] = useState(false);
-
   const [showPopup, setShowPopup] = useState(false);
   const [selectedTamu, setSelectedTamu] = useState(null);
-
-  // modal kamera state
   const [cam, setCam] = useState({ open: false, id: null, type: "in" });
-
   const listURL = useMemo(() => `${apiHost}/api/${ttc}/visitor/waiting`, [apiHost, ttc]);
   const updateURL = useMemo(
     () => (id) => `${apiHost}/api/${ttc}/visitor/visitors/${id}/update-status`,
@@ -489,27 +468,18 @@ export default function Landingsec() {
 
   useEffect(() => {
     fetchTamu();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listURL]);
 
-  // ✅ Approve: langsung buka modal kamera (type in)
   const handleApproveClick = (id) => {
     setUploading((prev) => ({ ...prev, [id]: "in" }));
     setCam({ open: true, id, type: "in" });
   };
 
-  // ✅ Keluar: langsung buka modal kamera (type out)
   const handleKeluarClick = (id) => {
     setUploading((prev) => ({ ...prev, [id]: "out" }));
     setCam({ open: true, id, type: "out" });
   };
 
-  /**
-   * FIX UTAMA supaya foto tampil:
-   * - setelah upload, ambil filename dari response backend (kalau backend rename)
-   * - update state pakai nama itu, bukan file.name
-   * - refresh list biar paling valid
-   */
   const handleUploadFoto = async (file, id, type) => {
     if (!file) return;
 
@@ -533,8 +503,7 @@ export default function Landingsec() {
         return;
       }
 
-      const savedName = pickSavedFilename(json, type) || file.name; // ✅ gunakan nama dari server kalau ada
-
+      const savedName = pickSavedFilename(json, type) || file.name;
       if (type === "in") {
         setTamu((prev) =>
           prev.map((t) =>
@@ -548,21 +517,18 @@ export default function Landingsec() {
       }
 
       if (type === "out") {
-        // update dulu (kalau kamu sempat lihat di UI), lalu sesuai patokan waiting bisa hilang
         setTamu((prev) =>
           prev.map((t) =>
             t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t
           )
         );
 
-        // kalau requirement: selesai hilang dari waiting
         setTamu((prev) => prev.filter((t) => t.id !== id));
 
         setUploading((prev) => ({ ...prev, [id]: false }));
         showToast("Selesai + Foto Keluar tersimpan", "success");
       }
 
-      // ✅ paling aman: refresh dari server (biar nama & status benar 100%)
       await fetchTamu();
     } catch (err) {
       console.error("Error upload foto:", err);
@@ -730,10 +696,8 @@ export default function Landingsec() {
         </section>
       </div>
 
-      {/* Modal Info */}
       <ModalInfo open={showPopup} onClose={() => setShowPopup(false)} apiHost={apiHost} tamu={selectedTamu} />
 
-      {/* Modal Camera */}
       <CameraModal
         open={cam.open}
         onClose={() => {
