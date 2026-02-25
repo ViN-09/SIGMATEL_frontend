@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./Landingsec.css";
 import "./landing.css";
 import Swal from "sweetalert2";
@@ -9,7 +9,7 @@ const HARDCODE_USERNAME = "zeyn";
 const HARDCODE_TTC = "ttc_paniki";
 const HARDCODE_API_HOST = "http://127.0.0.1:8000";
 
-
+/* ===================== Utils ===================== */
 function formatTanggalWaktu(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -17,20 +17,63 @@ function formatTanggalWaktu(ts) {
   return d.toLocaleString("id-ID");
 }
 
+/**
+ * Karena kamu bilang file disimpan di: storage/app/public/visitors
+ * dan biasanya diakses via symlink: public/storage/visitors/...
+ * maka URL utamanya: {apiHost}/storage/visitors/{filename}
+ *
+ * Aku tetep kasih beberapa kandidat buat jaga-jaga, tapi "visitors" jadi prioritas.
+ */
 function buildCandidates(apiHost, fileName) {
   if (!fileName || fileName === "-") return [];
   const clean = String(fileName).trim();
   if (!clean) return [];
+
   const base = apiHost.replace(/\/$/, "");
+  // cache busting biar gambar yang baru diupload langsung ke-refresh
+  const bust = `?t=${Date.now()}`;
+
   return [
-    `${base}/storage/visitors/${clean}`,
-    `${base}/storage/visitor/${clean}`,
-    `${base}/storage/dokumentasi/${clean}`,
-    `${base}/storage/uploads/${clean}`,
-    `${base}/storage/${clean}`,
+    `${base}/storage/visitors/${clean}${bust}`, // ✅ sesuai folder kamu
+    `${base}/storage/visitor/${clean}${bust}`,
+    `${base}/storage/dokumentasi/${clean}${bust}`,
+    `${base}/storage/uploads/${clean}${bust}`,
+    `${base}/storage/${clean}${bust}`,
   ];
 }
 
+function dataUrlToFile(dataUrl, filename = "capture.jpg") {
+  const arr = dataUrl.split(",");
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
+}
+
+/**
+ * Cari nama file hasil simpan dari response backend (kalau backend rename).
+ * Sesuaikan key kalau backendmu beda.
+ */
+function pickSavedFilename(json, type) {
+  const key = type === "in" ? "dokumentasi_in" : "dokumentasi_out";
+
+  // kemungkinan pola umum:
+  // { success: true, data: { dokumentasi_in: "xxx.jpg" } }
+  // { success: true, visitor: { dokumentasi_in: "xxx.jpg" } }
+  // { success: true, data: { visitor: { dokumentasi_in: "xxx.jpg" } } }
+  const v =
+    json?.data?.[key] ??
+    json?.visitor?.[key] ??
+    json?.data?.visitor?.[key] ??
+    json?.data?.data?.[key];
+
+  return typeof v === "string" && v.trim() ? v.trim() : "";
+}
+
+/* ===================== Small Components ===================== */
 function ImageWithFallback({ apiHost, fileName, alt }) {
   const candidates = useMemo(() => buildCandidates(apiHost, fileName), [apiHost, fileName]);
   const [idx, setIdx] = useState(0);
@@ -45,7 +88,11 @@ function ImageWithFallback({ apiHost, fileName, alt }) {
     <img
       src={src}
       alt={alt}
-      style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)" }}
+      style={{
+        maxWidth: "100%",
+        borderRadius: 10,
+        border: "1px solid rgba(0,0,0,0.08)",
+      }}
       onError={() => {
         if (idx < candidates.length - 1) setIdx((p) => p + 1);
       }}
@@ -59,8 +106,7 @@ function ModalInfo({ open, onClose, apiHost, tamu }) {
   const fotoMasukName = tamu?.dokumentasi_in || "";
   const fotoKeluarName = tamu?.dokumentasi_out || "";
   const signName = tamu?.signature || "";
-
-  const signatureUrl = signName ? `${apiHost}/storage/signatures/${signName}` : "";
+  const signatureUrl = signName ? `${apiHost.replace(/\/$/, "")}/storage/signatures/${signName}?t=${Date.now()}` : "";
 
   return (
     <div
@@ -71,7 +117,7 @@ function ModalInfo({ open, onClose, apiHost, tamu }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 9999,
+        zIndex: 9998,
         padding: 16,
       }}
       onClick={onClose}
@@ -152,8 +198,219 @@ function ModalInfo({ open, onClose, apiHost, tamu }) {
   );
 }
 
-export default function Landingsec() {
+/* ===================== Camera Modal ===================== */
+function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environment" }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
+  const [supported, setSupported] = useState(true);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
+  const [flash, setFlash] = useState(false);
+
+  const canUseMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  const stop = async () => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    } catch {}
+  };
+
+  const start = async () => {
+    setError("");
+    setStarting(true);
+
+    if (!canUseMedia) {
+      setSupported(false);
+      setStarting(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode } },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setSupported(true);
+    } catch (e) {
+      console.error("getUserMedia error:", e);
+      setSupported(false);
+      setError("Kamera tidak bisa diakses. Pakai Upload sebagai fallback (izin ditolak / tidak ada kamera / bukan HTTPS).");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    start();
+    return () => stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const captureAndSubmit = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, w, h);
+
+    setFlash(true);
+    setTimeout(() => setFlash(false), 120);
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    const file = dataUrlToFile(dataUrl, `capture_${Date.now()}.jpg`);
+
+    await onSubmitFile(file);
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+        padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 14,
+          width: "min(560px, 100%)",
+          overflow: "hidden",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="d-flex align-items-center p-3 border-bottom">
+          <div>
+            <div style={{ fontWeight: 700 }}>{title || "Ambil Foto"}</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              Kamera laptop & HP support (WebRTC). Kalau gagal, pakai Upload.
+            </div>
+          </div>
+          <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
+            Tutup
+          </button>
+        </div>
+
+        <div style={{ padding: 12 }}>
+          {supported ? (
+            <div style={{ position: "relative" }}>
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  background: "#000",
+                }}
+              />
+              {flash ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "#fff",
+                    opacity: 0.7,
+                    borderRadius: 12,
+                    pointerEvents: "none",
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : (
+            <div className="p-3 border rounded" style={{ background: "rgba(0,0,0,0.02)" }}>
+              <div style={{ fontSize: 13, marginBottom: 8 }}>
+                <b>Fallback Upload</b>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>{error}</div>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                capture={facingMode}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    await onSubmitFile(file);
+                    onClose();
+                  }
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          )}
+
+          <div className="d-flex gap-2 mt-3 flex-wrap">
+            {supported ? (
+              <>
+                <button type="button" className="btn btn-primary" onClick={captureAndSubmit} disabled={starting}>
+                  <i className="bi bi-camera me-2"></i>
+                  {starting ? "Membuka kamera..." : "Capture & Simpan"}
+                </button>
+
+                <button type="button" className="btn btn-outline-secondary" onClick={start}>
+                  Restart
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={async () => {
+                    await stop();
+                    setSupported(false);
+                    setError("Mode kamera dimatikan. Gunakan Upload sebagai fallback.");
+                  }}
+                >
+                  Stop
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-outline-primary" onClick={start}>
+                Coba Buka Kamera Lagi
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}>
+            Tips: WebRTC kamera paling lancar di <b>https</b> atau <b>http://localhost</b>. Pastikan izin kamera aktif.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Main ===================== */
+export default function Landingsec() {
   const username = HARDCODE_USERNAME;
   const ttc = HARDCODE_TTC;
   const apiHost = HARDCODE_API_HOST;
@@ -161,7 +418,7 @@ export default function Landingsec() {
   useEffect(() => {
     sessionStorage.setItem("username", username);
     sessionStorage.setItem("ttc", ttc);
-    sessionStorage.setItem("host", apiHost.replace(/^https?:\/\//, "")); // simpan versi tanpa http biar aman
+    sessionStorage.setItem("host", apiHost);
   }, [username, ttc, apiHost]);
 
   let userID = 0;
@@ -179,8 +436,14 @@ export default function Landingsec() {
   const [showPopup, setShowPopup] = useState(false);
   const [selectedTamu, setSelectedTamu] = useState(null);
 
-  const allURL = useMemo(() => `${apiHost}/api/${ttc}/visitor`, [apiHost, ttc]);
-  const updateBaseURL = useMemo(() => `${apiHost}/api/${ttc}/visitor`, [apiHost, ttc]);
+  // modal kamera state
+  const [cam, setCam] = useState({ open: false, id: null, type: "in" });
+
+  const listURL = useMemo(() => `${apiHost}/api/${ttc}/visitor/waiting`, [apiHost, ttc]);
+  const updateURL = useMemo(
+    () => (id) => `${apiHost}/api/${ttc}/visitor/visitors/${id}/update-status`,
+    [apiHost, ttc]
+  );
 
   const showToast = (message, type = "success") => {
     Swal.fire({
@@ -198,7 +461,7 @@ export default function Landingsec() {
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("application/json")) {
       const text = await res.text();
-      throw new Error(`Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 80)}`);
+      throw new Error(`Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`);
     }
     return res.json();
   };
@@ -206,22 +469,19 @@ export default function Landingsec() {
   const fetchTamu = async () => {
     setLoading(true);
     try {
-      const res = await fetch(allURL, { credentials: "include" });
+      const res = await fetch(listURL, { credentials: "include" });
       const json = await safeReadJson(res);
 
       if (json.success) {
-        const data = json.data || [];
-
-        const filtered = data.filter((t) =>
-          ["pending", "approved", "selesai"].includes(t.status)
-        );
-        setTamu(filtered);
+        setTamu(json.data || []);
       } else {
-        showToast("Gagal ambil data visitor", "error");
+        showToast(json.message || "Gagal ambil data", "error");
+        setTamu([]);
       }
     } catch (err) {
       console.error("fetchTamu error:", err);
-      showToast("API error / bukan JSON", "error");
+      showToast("API error / route tidak ada / bukan JSON", "error");
+      setTamu([]);
     } finally {
       setLoading(false);
     }
@@ -229,13 +489,27 @@ export default function Landingsec() {
 
   useEffect(() => {
     fetchTamu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listURL]);
 
-  }, [allURL]);
-
+  // ✅ Approve: langsung buka modal kamera (type in)
   const handleApproveClick = (id) => {
     setUploading((prev) => ({ ...prev, [id]: "in" }));
+    setCam({ open: true, id, type: "in" });
   };
 
+  // ✅ Keluar: langsung buka modal kamera (type out)
+  const handleKeluarClick = (id) => {
+    setUploading((prev) => ({ ...prev, [id]: "out" }));
+    setCam({ open: true, id, type: "out" });
+  };
+
+  /**
+   * FIX UTAMA supaya foto tampil:
+   * - setelah upload, ambil filename dari response backend (kalau backend rename)
+   * - update state pakai nama itu, bukan file.name
+   * - refresh list biar paling valid
+   */
   const handleUploadFoto = async (file, id, type) => {
     if (!file) return;
 
@@ -245,26 +519,28 @@ export default function Landingsec() {
     formData.append("status", type === "in" ? "approved" : "selesai");
 
     try {
-      const res = await fetch(`${updateBaseURL}/${id}/update-status`, {
+      const res = await fetch(updateURL(id), {
         method: "POST",
         body: formData,
         credentials: "include",
-        headers: {
-          userid: String(userID),
-        },
+        headers: { userid: String(userID) },
       });
 
       const json = await safeReadJson(res);
 
       if (!json.success) {
-        alert("Gagal update status: " + (json.message || "unknown"));
+        showToast("Gagal update status: " + (json.message || "unknown"), "error");
         return;
       }
+
+      const savedName = pickSavedFilename(json, type) || file.name; // ✅ gunakan nama dari server kalau ada
 
       if (type === "in") {
         setTamu((prev) =>
           prev.map((t) =>
-            t.id === id ? { ...t, status: "approved", dokumentasi_in: file.name } : t
+            t.id === id
+              ? { ...t, status: "approved", dokumentasi_in: savedName }
+              : t
           )
         );
         setUploading((prev) => ({ ...prev, [id]: false }));
@@ -272,23 +548,31 @@ export default function Landingsec() {
       }
 
       if (type === "out") {
+        // update dulu (kalau kamu sempat lihat di UI), lalu sesuai patokan waiting bisa hilang
         setTamu((prev) =>
           prev.map((t) =>
-            t.id === id ? { ...t, status: "selesai", dokumentasi_out: file.name } : t
+            t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t
           )
         );
+
+        // kalau requirement: selesai hilang dari waiting
+        setTamu((prev) => prev.filter((t) => t.id !== id));
+
         setUploading((prev) => ({ ...prev, [id]: false }));
         showToast("Selesai + Foto Keluar tersimpan", "success");
       }
+
+      // ✅ paling aman: refresh dari server (biar nama & status benar 100%)
+      await fetchTamu();
     } catch (err) {
       console.error("Error upload foto:", err);
-      alert("Upload gagal, cek koneksi atau server API!");
+      showToast("Upload gagal, cek koneksi atau server API!", "error");
     }
   };
 
   const handleReject = async (id) => {
     try {
-      const res = await fetch(`${updateBaseURL}/${id}/update-status`, {
+      const res = await fetch(updateURL(id), {
         method: "POST",
         body: new URLSearchParams({ status: "rejected" }),
         credentials: "include",
@@ -301,11 +585,10 @@ export default function Landingsec() {
       const json = await safeReadJson(res);
 
       if (json.success) {
-
         setTamu((prev) => prev.filter((t) => t.id !== id));
         showToast("Tamu rejected", "success");
       } else {
-        showToast("Gagal reject", "error");
+        showToast(json.message || "Gagal reject", "error");
       }
     } catch (err) {
       console.error("Error reject:", err);
@@ -320,7 +603,6 @@ export default function Landingsec() {
 
   const pendingCount = tamu.filter((t) => t.status === "pending").length;
   const approvedCount = tamu.filter((t) => t.status === "approved").length;
-  const selesaiCount = tamu.filter((t) => t.status === "selesai").length;
 
   return (
     <div className="dashboard-container">
@@ -343,7 +625,6 @@ export default function Landingsec() {
           User: <b>{username}</b> • Host: <b>{apiHost}</b> • TTC: <b>{ttc}</b>
         </div>
 
-        {/* Ringkasan */}
         <section className="summary-section">
           <div className="summary-card bg-red">
             <i className="bi bi-person summary-icon text-white"></i>
@@ -360,17 +641,8 @@ export default function Landingsec() {
               <div className="summary-value">{approvedCount}</div>
             </div>
           </div>
-
-          <div className="summary-card" style={{ background: "#f0ad4e" }}>
-            <i className="bi bi-flag summary-icon text-white"></i>
-            <div className="summary-text">
-              <div className="summary-title">Tamu Selesai</div>
-              <div className="summary-value">{selesaiCount}</div>
-            </div>
-          </div>
         </section>
 
-        {/* Daftar Tamu */}
         <section className="table-section" id="approval-list">
           <table>
             <thead>
@@ -401,42 +673,30 @@ export default function Landingsec() {
 
               {tamu.map((t) => (
                 <tr key={t.id}>
-                  <td>
-                    {new Date(t.created_at).toLocaleDateString("id-ID", { weekday: "long" })}
-                  </td>
+                  <td>{new Date(t.created_at).toLocaleDateString("id-ID", { weekday: "long" })}</td>
                   <td>{new Date(t.created_at).toLocaleDateString("id-ID")}</td>
                   <td>{t.name}</td>
                   <td>{t.company}</td>
                   <td>{t.phone}</td>
                   <td>{t.activity}</td>
-                  <td>
-                    {new Date(t.created_at).toLocaleTimeString("id-ID", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </td>
+                  <td>{new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
                   <td>{t.ruang_kerja}</td>
                   <td>{t.visit_id}</td>
                   <td>{t.status}</td>
 
                   <td>
-                    <button
-                      className="btn btn-outline-info btn-sm"
-                      onClick={() => openInfo(t)}
-                      title="Lihat detail"
-                    >
+                    <button className="btn btn-outline-info btn-sm" onClick={() => openInfo(t)} title="Lihat detail">
                       <i className="bi bi-info-circle"></i>
                     </button>
                   </td>
 
                   <td>
-                    {/* pending */}
-                    {t.status === "pending" && !uploading[t.id] && (
+                    {t.status === "pending" && (
                       <div className="d-flex gap-1">
                         <button
                           className="btn btn-success btn-sm d-flex align-items-center"
                           onClick={() => handleApproveClick(t.id)}
-                          title="Approve (upload foto masuk)"
+                          title="Approve (langsung buka kamera foto masuk)"
                         >
                           <i className="bi bi-check-circle"></i>
                         </button>
@@ -451,37 +711,17 @@ export default function Landingsec() {
                       </div>
                     )}
 
-                    {uploading[t.id] === "in" && (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleUploadFoto(e.target.files?.[0], t.id, "in")}
-                      />
-                    )}
-
-                    {/* approved -> out */}
-                    {t.status === "approved" && !uploading[t.id] && (
+                    {t.status === "approved" && (
                       <button
                         className="btn btn-warning btn-sm"
-                        onClick={() => setUploading((prev) => ({ ...prev, [t.id]: "out" }))}
-                        title="Tamu Keluar (upload foto keluar)"
+                        onClick={() => handleKeluarClick(t.id)}
+                        title="Tamu Keluar (langsung buka kamera foto keluar)"
                       >
                         <i className="bi bi-box-arrow-right"></i>
                       </button>
                     )}
 
-                    {uploading[t.id] === "out" && (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleUploadFoto(e.target.files?.[0], t.id, "out")}
-                      />
-                    )}
-
-                    {/* selesai */}
-                    {t.status === "selesai" && (
-                      <span style={{ fontSize: 12, opacity: 0.7 }}>—</span>
-                    )}
+                    {t.status === "selesai" && <span style={{ fontSize: 12, opacity: 0.7 }}>—</span>}
                   </td>
                 </tr>
               ))}
@@ -490,11 +730,22 @@ export default function Landingsec() {
         </section>
       </div>
 
-      <ModalInfo
-        open={showPopup}
-        onClose={() => setShowPopup(false)}
-        apiHost={apiHost}
-        tamu={selectedTamu}
+      {/* Modal Info */}
+      <ModalInfo open={showPopup} onClose={() => setShowPopup(false)} apiHost={apiHost} tamu={selectedTamu} />
+
+      {/* Modal Camera */}
+      <CameraModal
+        open={cam.open}
+        onClose={() => {
+          if (cam.id != null) setUploading((prev) => ({ ...prev, [cam.id]: false }));
+          setCam({ open: false, id: null, type: "in" });
+        }}
+        title={cam.type === "in" ? "Foto Masuk (Approve)" : "Foto Keluar (Selesai)"}
+        facingMode="environment"
+        onSubmitFile={async (file) => {
+          if (!cam.id) return;
+          await handleUploadFoto(file, cam.id, cam.type);
+        }}
       />
     </div>
   );
