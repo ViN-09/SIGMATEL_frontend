@@ -59,7 +59,7 @@ function buildCandidates(apiHost, fileName) {
   const bust = `?t=${Date.now()}`;
 
   return [
-    `${base}/storage/visitors/${clean}${bust}`, // ✅ sesuai folder kamu
+    `${base}/storage/visitors/${clean}${bust}`, 
     `${base}/storage/visitor/${clean}${bust}`,
     `${base}/storage/dokumentasi/${clean}${bust}`,
     `${base}/storage/uploads/${clean}${bust}`,
