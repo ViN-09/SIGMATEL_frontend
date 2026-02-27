@@ -1,0 +1,67 @@
+@media (max-width: 500px) {
+    #aproval-list{
+        td{
+            font-size: 13px;
+        }
+        padding: 0px;
+        table th:nth-child(1),
+        table td:nth-child(1),
+        table th:nth-child(2),
+        table td:nth-child(2),
+        table th:nth-child(5),
+        table td:nth-child(5),
+        table th:nth-child(6),
+        table td:nth-child(6),
+        table th:nth-child(7),
+        table td:nth-child(7),
+        table th:nth-child(8),
+        table td:nth-child(8),
+        table th:nth-child(9),
+        table td:nth-child(9),
+        table th:nth-child(10),
+        table td:nth-child(10) {
+            display: none;
+        }
+    
+        table th:last-child,
+        table td:last-child {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+    }
+
+    #guest-list{
+        td{
+        font-size: 13px;
+    }
+        padding: 0px;
+        table th:nth-child(1),
+        table td:nth-child(1),
+        table th:nth-child(5),
+        table td:nth-child(5), 
+        table th:nth-child(6),
+        table td:nth-child(6), 
+        table th:nth-child(7),
+        table td:nth-child(7), 
+        table th:nth-child(8),
+        table td:nth-child(8), 
+        table th:nth-child(9),
+        table td:nth-child(9), 
+        table th:nth-child(10),
+        table td:nth-child(10), 
+        table th:nth-child(11),
+        table td:nth-child(11), 
+        table th:nth-child(12),
+        table td:nth-child(12), 
+        table th:nth-child(13),
+        table td:nth-child(13) {
+            display: none;
+        }
+    
+
+    }
+
+    
+}

@@ -7,7 +7,7 @@ function Container_visitors() {
 
   useEffect(() => {
     // Mengambil data dari API
-    fetch("http://localhost:8000/api/ttc_paniki/visitors")
+    fetch("http://localhost:8000/api/ttc_teling/visitors")
       .then((response) => response.json())
       .then((data) => {
         setVisitors(data); // Menyimpan data ke state

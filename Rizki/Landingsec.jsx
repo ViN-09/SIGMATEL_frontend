@@ -4,18 +4,17 @@ import "./landing.css";
 import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import telkomselImg2 from "../assets/Telkomsel Logo.png";
-import telkomselImg1 from "../assets/telkom.png";
+import telkomselImg2 from "../../assets/Telkomsel Logo.png";
+import telkomselImg1 from "../../assets/telkom.png";
 import { Link } from "react-router-dom";
-import InfoTamu from "../component/InfoTamu"; // ✅ import popup InfoTamu
+import InfoTamu from "../../FrontendScript2/Rizki/component/InfoTamu"; // ✅ import popup InfoTamu
 
 
-export default function Dashboard() {
-  const apiHost = sessionStorage.getItem("host");
- const user = JSON.parse(sessionStorage.getItem("userinfo"));
- const userID = user.id;
- console.log(user);
-  console.log(user.id);
+export default function Dashboard() {const apiHost = sessionStorage.getItem("host");
+const user = JSON.parse(sessionStorage.getItem("userinfo"));
+const userID = user.id;
+console.log(user);
+console.log(user.id);
   const [tamu, setTamu] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploading, setUploading] = useState({});

@@ -1,0 +1,196 @@
+.visitor-register {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #f35525, #e60012);
+}
+
+.register-card {
+  background: #fff;
+  padding: 25px 20px;
+  border-radius: 18px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  animation: fadeInUp 0.5s ease;
+}
+
+.register-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: #222;
+}
+
+.register-subtitle {
+  font-size: 0.9rem;
+  margin-bottom: 25px;
+  color: #666;
+}
+
+.register-form {
+  text-align: left;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.form-group label i {
+  margin-right: 6px;
+  color: #f35525;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  background: #fff;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #f35525;
+  box-shadow: 0 0 0 3px rgba(243, 85, 37, 0.2);
+}
+
+/* --- Select Dropdown --- */
+.form-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23f35525' height='24' viewBox='0 0 24 24' width='24'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 40px;
+}
+
+/* --- Aktivitas (textarea) --- */
+.form-group textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+/* --- Signature Pad --- */
+.signature-container {
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  padding: 8px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signature-container canvas {
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #ccc;
+}
+
+.clear-btn {
+  align-self: flex-end;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #f35525;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.clear-btn:hover {
+  background: #e03d15;
+}
+
+/* --- Button Submit --- */
+.btn-register {
+  width: 100%;
+  background: #f35525;
+  color: white;
+  border: none;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.btn-register:hover {
+  background: #e03d15;
+}
+
+.signature-container canvas {
+  touch-action: none; /* Penting untuk mencegah scroll saat touch */
+  cursor: crosshair;
+}
+
+/* --- Animasi --- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Responsive khusus max 500px --- */
+@media (max-width: 500px) {
+  .register-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .register-title {
+    font-size: 1.4rem;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+
+  .btn-register {
+    font-size: 0.95rem;
+    padding: 12px;
+  }
+
+  .signature-container canvas {
+    height: 120px;
+  }
+
+  .clear-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+  }
+}
