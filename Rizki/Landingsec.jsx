@@ -7,7 +7,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import telkomselImg2 from "../../assets/Telkomsel Logo.png";
 import telkomselImg1 from "../../assets/telkom.png";
 import { Link } from "react-router-dom";
-import InfoTamu from "../../FrontendScript2/Rizki/component/InfoTamu"; // ✅ import popup InfoTamu
+import InfoTamu from "../../component/InfoTamu.jsx"; // ✅ import popup InfoTamu
 
 
 export default function Dashboard() {const apiHost = sessionStorage.getItem("host");

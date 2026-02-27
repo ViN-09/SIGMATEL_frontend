@@ -5,9 +5,42 @@ import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-const HARDCODE_USERNAME = "zeyn";
-const HARDCODE_TTC = "ttc_paniki";
-const HARDCODE_API_HOST = "http://127.0.0.1:8000";
+const API_HOST = "http://127.0.0.1:8000";
+
+function getSiteConfig() {
+  const user = JSON.parse(sessionStorage.getItem("userinfo"));
+
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
+  // fallback
+  return {
+    username: user.name,
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
+}
 
 /* ===================== Utils ===================== */
 function formatTanggalWaktu(ts) {
@@ -17,20 +50,12 @@ function formatTanggalWaktu(ts) {
   return d.toLocaleString("id-ID");
 }
 
-/**
- * Karena kamu bilang file disimpan di: storage/app/public/visitors
- * dan biasanya diakses via symlink: public/storage/visitors/...
- * maka URL utamanya: {apiHost}/storage/visitors/{filename}
- *
- * Aku tetep kasih beberapa kandidat buat jaga-jaga, tapi "visitors" jadi prioritas.
- */
 function buildCandidates(apiHost, fileName) {
   if (!fileName || fileName === "-") return [];
   const clean = String(fileName).trim();
   if (!clean) return [];
 
   const base = apiHost.replace(/\/$/, "");
-  // cache busting biar gambar yang baru diupload langsung ke-refresh
   const bust = `?t=${Date.now()}`;
 
   return [
@@ -53,17 +78,9 @@ function dataUrlToFile(dataUrl, filename = "capture.jpg") {
   return new File([u8arr], filename, { type: mime });
 }
 
-/**
- * Cari nama file hasil simpan dari response backend (kalau backend rename).
- * Sesuaikan key kalau backendmu beda.
- */
+
 function pickSavedFilename(json, type) {
   const key = type === "in" ? "dokumentasi_in" : "dokumentasi_out";
-
-  // kemungkinan pola umum:
-  // { success: true, data: { dokumentasi_in: "xxx.jpg" } }
-  // { success: true, visitor: { dokumentasi_in: "xxx.jpg" } }
-  // { success: true, data: { visitor: { dokumentasi_in: "xxx.jpg" } } }
   const v =
     json?.data?.[key] ??
     json?.visitor?.[key] ??
@@ -255,7 +272,6 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
     if (!open) return;
     start();
     return () => stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const captureAndSubmit = async () => {
@@ -312,7 +328,6 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
           <div>
             <div style={{ fontWeight: 700 }}>{title || "Ambil Foto"}</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Kamera laptop & HP support (WebRTC). Kalau gagal, pakai Upload.
             </div>
           </div>
           <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
@@ -401,7 +416,6 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
           </div>
 
           <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}>
-            Tips: WebRTC kamera paling lancar di <b>https</b> atau <b>http://localhost</b>. Pastikan izin kamera aktif.
           </div>
         </div>
       </div>
@@ -411,9 +425,10 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
 
 /* ===================== Main ===================== */
 export default function Landingsec() {
-  const username = HARDCODE_USERNAME;
-  const ttc = HARDCODE_TTC;
-  const apiHost = HARDCODE_API_HOST;
+const SITE = getSiteConfig();
+const username = SITE.username;
+const ttc = SITE.ttc;
+const apiHost = API_HOST;
 
   useEffect(() => {
     sessionStorage.setItem("username", username);
@@ -489,7 +504,6 @@ export default function Landingsec() {
 
   useEffect(() => {
     fetchTamu();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listURL]);
 
   // ✅ Approve: langsung buka modal kamera (type in)
@@ -504,12 +518,7 @@ export default function Landingsec() {
     setCam({ open: true, id, type: "out" });
   };
 
-  /**
-   * FIX UTAMA supaya foto tampil:
-   * - setelah upload, ambil filename dari response backend (kalau backend rename)
-   * - update state pakai nama itu, bukan file.name
-   * - refresh list biar paling valid
-   */
+  
   const handleUploadFoto = async (file, id, type) => {
     if (!file) return;
 
@@ -544,7 +553,7 @@ export default function Landingsec() {
           )
         );
         setUploading((prev) => ({ ...prev, [id]: false }));
-        showToast("Approved + Foto Masuk tersimpan", "success");
+        showToast("Tamu Berhasil Approved", "success");
       }
 
       if (type === "out") {
@@ -559,7 +568,7 @@ export default function Landingsec() {
         setTamu((prev) => prev.filter((t) => t.id !== id));
 
         setUploading((prev) => ({ ...prev, [id]: false }));
-        showToast("Selesai + Foto Keluar tersimpan", "success");
+        showToast("Tamu Out", "success");
       }
 
       // ✅ paling aman: refresh dari server (biar nama & status benar 100%)
@@ -607,22 +616,8 @@ export default function Landingsec() {
   return (
     <div className="dashboard-container">
       <div className="main-content">
-        <div className="d-flex align-items-center mb-2">
-          <h3 className="security-title mb-0">Approval Tamu</h3>
-
-          <button
-            className="btn btn-sm btn-outline-primary ms-auto"
-            onClick={fetchTamu}
-            disabled={loading}
-            title="Refresh data"
-          >
-            <i className="bi bi-arrow-clockwise me-1"></i>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-
-        <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 12 }}>
-          User: <b>{username}</b> • Host: <b>{apiHost}</b> • TTC: <b>{ttc}</b>
+        <div className="d-flex align-items-center mb-3">
+          <h3 className="security-title mb-3" style={{ textAlign: "center", width: "100%" }}> Approval Tamu </h3>
         </div>
 
         <section className="summary-section">
