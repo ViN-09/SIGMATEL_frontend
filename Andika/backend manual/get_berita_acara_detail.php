@@ -2,6 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
+
 require "koneksi.php";
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -14,7 +15,7 @@ if ($id <= 0) {
   exit;
 }
 
-/* ================= HEADER BERITA ACARA ================= */
+/* ===== HEADER ===== */
 $q = mysqli_query($koneksi, "
   SELECT 
     id,
@@ -29,8 +30,10 @@ $q = mysqli_query($koneksi, "
     created_at,
     ttd_penyerah,
     ttd_penerima,
-    ttd_mengetahui
-  FROM berita_acara 
+    ttd_approval,
+    bm_nama,
+    approval_status
+  FROM berita_acara
   WHERE id = $id
 ");
 
@@ -44,13 +47,9 @@ if (!$q || mysqli_num_rows($q) === 0) {
 
 $header = mysqli_fetch_assoc($q);
 
-/* ================= BARANG ================= */
+/* ===== BARANG ===== */
 $qBarang = mysqli_query($koneksi, "
-  SELECT 
-    nama_barang,
-    jumlah,
-    tipe,
-    sn
+  SELECT nama_barang, jumlah, tipe, sn,foto
   FROM barang_list
   WHERE id_berita = $id
 ");
@@ -60,11 +59,11 @@ while ($b = mysqli_fetch_assoc($qBarang)) {
   $barang[] = $b;
 }
 
-/* ================= RESPONSE ================= */
+/* ===== GABUNG DATA ===== */
+$header["barang"] = $barang;
+
+/* ===== RESPONSE ===== */
 echo json_encode([
   "status" => "success",
-  "data" => [
-    ...$header,
-    "barang" => $barang
-  ]
+  "data" => $header
 ]);

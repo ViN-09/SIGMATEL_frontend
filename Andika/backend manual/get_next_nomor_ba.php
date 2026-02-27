@@ -2,10 +2,29 @@
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-error_reporting(0);
+header("Content-Type: application/json");
 
 require "koneksi.php";
 
+/* =============================
+   AMBIL SITE (sementara hardcode)
+   Nanti bisa dari login/session
+============================= */
+$site = "TTC Teling"; // ganti sesuai kebutuhan
+
+/* =============================
+   PREFIX BERDASARKAN SITE
+============================= */
+$prefixMap = [
+  "TTC Teling" => "MDO018",
+  "TTC Paniki" => "MDO002"
+];
+
+$prefix = $prefixMap[$site] ?? "MDO000";
+
+/* =============================
+   BULAN ROMAWI
+============================= */
 $bulanRomawi = [
   "I","II","III","IV","V","VI",
   "VII","VIII","IX","X","XI","XII"
@@ -14,29 +33,34 @@ $bulanRomawi = [
 $bulan = $bulanRomawi[date("n") - 1];
 $tahun = date("Y");
 
-$query = "
-  SELECT nomor 
+/* =============================
+   AMBIL ID TERAKHIR DI SITE TERSEBUT
+============================= */
+$q = mysqli_query($koneksi, "
+  SELECT id
   FROM berita_acara
-  WHERE nomor LIKE '%/$bulan/$tahun/%'
-  ORDER BY id DESC 
+  WHERE site='$site'
+  ORDER BY id DESC
   LIMIT 1
-";
+");
 
-$result = mysqli_query($koneksi, $query);
+$lastId = 0;
 
-$urutan = 1;
-
-if ($result && mysqli_num_rows($result) > 0) {
-  $row = mysqli_fetch_assoc($result);
-  $pecah = explode("/", $row["nomor"]);
-  $urutan = intval(end($pecah)) + 1;
+if ($q && mysqli_num_rows($q) > 0) {
+  $row = mysqli_fetch_assoc($q);
+  $lastId = intval($row['id']);
 }
 
-$urutanFormatted = str_pad($urutan, 3, "0", STR_PAD_LEFT);
-$nomorBaru = "MDO018/$bulan/$tahun/$urutanFormatted";
+$nextId = $lastId + 1;
+
+/* =============================
+   FORMAT NOMOR
+============================= */
+$nomorBaru = "$prefix/$bulan/$tahun/$nextId";
 
 echo json_encode([
   "status" => "success",
   "nomor" => $nomorBaru
 ]);
+
 exit;

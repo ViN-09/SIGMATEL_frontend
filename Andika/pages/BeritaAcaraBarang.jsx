@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import Swal from "sweetalert2";
 import SignatureCanvas from "react-signature-canvas";
+
 
 export default function BeritaAcaraBarang() {
 
@@ -113,19 +112,24 @@ textarea:focus {
 
 /* ===== BUTTON ===== */
 .btn-tambah {
-  width: 100%;
-  margin-top: 10px;
-  height: 44px;
-  border-radius: 12px;
-  font-weight: 700;
-  background: var(--primary);
-  color: #ff0808;
+  background: #ff2c2c;
+  color: #fff;
   border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
 }
   .btn-hapus {
-  table-layout: fixed;
-  overflow-wrap: break-word;
-  background: var(--danger);
+  background: #ff2c2c;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
   }
 
 /* ===== TABLE (DESKTOP ONLY) ===== */
@@ -235,6 +239,30 @@ td {
     font-size: 16px;
   }
 }
+  .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+}
+
+/* ===== INPUT ===== */
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+
 
     `;
 
@@ -246,29 +274,26 @@ td {
     return () => document.head.removeChild(style);
   }, []);
   
-useEffect(() => {
-  
-  const getNomorOtomatis = async () => {
-    try {
-      const res = await fetch(
-        `http://localhost/BA_barang_in-out/api/get_next_nomor_ba.php`
-      );
+const getNomorOtomatis = async () => {
+  try {
+    const res = await fetch(
+      "http://localhost/BA_barang_in-out/api/get_next_nomor_ba.php"
+    );
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (data.status === "success") {
-        setForm((p) => ({
-          ...p,
-          nomor: data.nomor, 
-        }));
-      } else {
-        console.error("Gagal ambil nomor:", data.message);
-      }
-    } catch (err) {
-      console.error("Gagal mengambil nomor BA:", err);
+    if (data.status === "success") {
+      setForm(p => ({
+        ...p,
+        nomor: data.nomor
+      }));
     }
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
 
+useEffect(() => {
   getNomorOtomatis();
 }, []);
 
@@ -282,24 +307,30 @@ useEffect(() => {
     pihakB: { nama: "", jabatan: "" }
   });
 
-  const [items, setItems] = useState([]);
-  const [newItem, setNewItem] = useState({ nama: "", jumlah: "", tipe: "", sn: "" });
+const [items, setItems] = useState([]);
+const [newItem, setNewItem] = useState({
+  
+  nama: "",
+  jumlah: "",
+  tipe: "",
+  sn: "",
+  foto: null,
+  fotoPreview: "" 
+})
+
 
   // ====== SIGNATURE ======
-const sigPenyerah = useRef(null);
-const sigPenerima = useRef(null);
-const sigMengetahui = useRef(null);
+const sigPenyerah = useRef();
+const sigPenerima = useRef();
+
 
 const [ttdPenyerah, setTtdPenyerah] = useState("");
 const [ttdPenerima, setTtdPenerima] = useState("");
-const [ttdMengetahui, setTtdMengetahui] = useState("");
+
 
 const [penyerah, setPenyerah] = useState({ nama: "", asal: "" });
 const [penerima, setPenerima] = useState({ nama: "", asal: "" });
-const [mengetahui, setMengetahui] = useState({
-  nama: "Djefli Dalita",
-  asal: "Building Manager"
-});
+
 
   // ====== Controlled Input ======
   const handleChange = (e) => {
@@ -317,205 +348,169 @@ const [mengetahui, setMengetahui] = useState({
     setNewItem((p) => ({ ...p, [name]: value }));
   };
 
-  const addItem = () => {
-    if (!newItem.nama || !newItem.jumlah) {
-      Swal.fire("Lengkapi data!", "Nama & Jumlah wajib diisi", "warning");
-      return;
-    }
-    setItems((p) => [...p, newItem]);
-    setNewItem({ nama: "", jumlah: "", tipe: "", sn: "" });
-    
-  };
-
-
-
   const removeItem = (i) => setItems((p) => p.filter((_, idx) => idx !== i));
 
-  const getHari = (tanggal) => {
-    if (!tanggal) return "";
-    const hari = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-    return hari[new Date(tanggal).getDay()];
-  };
 
+ const saveBerita = async () => {
+  if (!form.tanggal) {
+    Swal.fire("Gagal", "Tanggal wajib diisi", "warning");
+    return;
+  }
 
-  const buildPDFContent = () => `
-    <div style="font-family:Inter; color:#111;">
-      <div style="display:flex; justify-content:space-between;">
-        <img src="/logo.png" style="height:50px;" />
-        <img src="/Logo Kanan.png" style="height:50px;" />
-      </div>
-
-      <h2 style="text-align:center; text-decoration:underline;">BERITA ACARA ${form.jenis}</h2>
-
-            <p style="font-size:14px; text-align:center;">
-              Pada Hari <b>${getHari(form.tanggal)}</b>, tanggal <b>${form.tanggal}</b>.<br>
-              Dari <b>${penyerah.asal}</b> kepada <b>${penerima.asal}</b>.<br>
-              Telah dilakukan serah terima barang berikut:
-            </p>
-
-      <table style="width:100%; border-collapse:collapse; margin-top:12px;">
-        <thead>
-          <tr style="background:#f8fafc;">
-            <th style="border:1px solid #ddd;">No</th>
-            <th style="border:1px solid #ddd;">Nama Barang</th>
-            <th style="border:1px solid #ddd;">Jumlah</th>
-            <th style="border:1px solid #ddd;">Tipe</th>
-            <th style="border:1px solid #ddd;">S/N</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${
-            items.length === 0
-            ? `<tr><td colspan="5" style="text-align:center;">Tidak ada barang</td></tr>`
-            : items.map((it, i) => `
-              <tr>
-                <td style="border:1px solid #ddd;">${i + 1}</td>
-                <td style="border:1px solid #ddd;">${it.nama}</td>
-                <td style="border:1px solid #ddd;">${it.jumlah}</td>
-                <td style="border:1px solid #ddd;">${it.tipe}</td>
-                <td style="border:1px solid #ddd;">${it.sn}</td>
-              </tr>
-            `).join("")
-          }
-        </tbody>
-      </table>
-      <p style="font-size:14px; text-align:Left;">Demikian Berita Acara Serah Terima Barang Ini Dibuat Dengan Sebenar - Benarnya: </p>
-<div style="display:flex; justify-content:space-around; margin-top:30px;">
-  <div style="text-align:center; width:30%;">
-    <b>Yang Menyerahkan</b><br><br>
-  <div style="display:flex; justify-content:center;">
-    <img src="${ttdPenyerah}" height="70" />
-  </div>
-    <u>${penyerah.nama}</u><br>${penyerah.asal}
-  </div>
-
-  <div style="text-align:center; width:30%;">
-    <b>Yang Menerima</b><br><br>
-    <img src="${ttdPenerima}" height="70"/><br>
-    <u>${penerima.nama}</u><br>${penerima.asal}
-  </div>
-</div>
-
-<div style="display:flex; justify-content:center; margin-top:30px;">
-  <div style="text-align:center; width:30%;">
-    <b>Mengetahui</b><br><br>
-    <img src="${ttdMengetahui}" height="70"/><br>
-    <u>Djefli Dalita</u><br>Building Manager
-  </div>
-</div>
-
-  `;
-
-  // ====== SweetAlert Preview  ======
-const previewPDF = async () => {
-  const html = buildPDFContent();
-  const container = document.createElement("div");
-  container.innerHTML = html; 
-
-  Swal.fire({
-    title: "Preview Dokumen",
-    width: "950px",
-    html: container,
-    confirmButtonText: "Export PDF",
-    showCancelButton: true,
-    preConfirm: () => exportPDF()
-  });
-};
-
-
- const exportPDF = async () => {
-  try {
-if (!ttdPenyerah || !ttdPenerima || !ttdMengetahui) {
-  Swal.fire("TTD belum lengkap", "Semua pihak wajib tanda tangan", "warning");
+if (form.jenis === "MASUK" && !ttdPenyerah) {
+  Swal.fire("TTD belum lengkap", "TTD Penyerah wajib diisi", "warning");
   return;
-        }
+}
 
-              const payloadHeader = {
-                ...form,
+if (form.jenis === "KELUAR" && !ttdPenerima) {
+  Swal.fire("TTD belum lengkap", "TTD Penerima wajib diisi", "warning");
+  return;
+}
 
-                pihakA: {
-                  nama: penyerah.nama,
-                  jabatan: penyerah.asal,
-                },
+  try {
+    // 1️⃣ Simpan header
+    const user_id = localStorage.getItem("user_id") || 1; // sementara hardcode user_id, nanti bisa diambil dari session/login
+    const resHeader = await fetch("http://localhost/BA_barang_in-out/api/save_berita.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomor: form.nomor, // nomor BA bisa di-generate otomatis di backend berdasarkan tanggal dan nomor urut, untuk sementara kita kirim dari frontend
+          tanggal: form.tanggal,
+          jenis: form.jenis,
+          keterangan: form.keterangan,
+          pihakA: {
+            nama: penyerah.nama,
+            jabatan: penyerah.asal
+          },
+          pihakB: {
+            nama: penerima.nama,
+            jabatan: penerima.asal
+          },
+          ttd_penyerah: form.jenis === "MASUK" ? ttdPenyerah : null,
+          ttd_penerima: form.jenis === "KELUAR" ? ttdPenerima : null
+        })
+    }).then(r => r.json());
 
-                pihakB: {
-                  nama: penerima.nama,
-                  jabatan: penerima.asal,
-                },
-
-                ttd_penyerah: ttdPenyerah,
-                ttd_penerima: ttdPenerima,
-                ttd_mengetahui: ttdMengetahui,
-              };
-       
-
-
-    const saveBerita = await fetch(
-      "http://localhost/BA_barang_in-out/api/save_berita.php",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadHeader)
-      }
-    );
-
-    const resBerita = await saveBerita.json();
-
-    if (resBerita.status !== "success") {
-      Swal.fire("Gagal", resBerita.message, "error");
+    if (resHeader.status !== "success") {
+      Swal.fire("Gagal", resHeader.message, "error");
       return;
     }
 
-    const id_berita = resBerita.id_berita; // 
+    // 2️⃣ Simpan barang + foto
+    const barangFinal = [];
 
-    const payloadBarang = {
-      id_berita: id_berita,
-      nomor: form.nomor,
-      barang: items
-    };
+    for (const b of items) {
+      let fotoPath = "";
 
-    const saveBarang = await fetch(
-      "http://localhost/BA_barang_in-out/api/save_barang.php",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadBarang)
+      if (b.foto) {
+        const up = await uploadFoto(b.foto);
+        fotoPath = up.path;
       }
-    );
 
-    const resBarang = await saveBarang.json();
-
-    if (resBarang.status !== "success") {
-      Swal.fire("Gagal", resBarang.message, "error");
-      return;
+      barangFinal.push({
+        nama: b.nama,
+        jumlah: b.jumlah,
+        tipe: b.tipe,
+        sn: b.sn,
+        foto: fotoPath
+      });
     }
 
-    //   GENERATE PDF
-    const area = document.createElement("div");
-    area.style.width = "210mm";
-    area.style.padding = "20px";
-    area.innerHTML = buildPDFContent();
-    document.body.appendChild(area);
-    const canvas = await html2canvas(area, { scale: 2 });
-    const pdf = new jsPDF("p", "mm", "a4");
+    await fetch("http://localhost/BA_barang_in-out/api/save_barang.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_berita: resHeader.id_berita,
+        nomor: form.nomor,
+        barang: barangFinal
+      })
+    });
 
-    const img = canvas.toDataURL("image/png");
-    const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(img, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`Berita_Acara_${form.nomor || "Dokumen"}.pdf`);
-
-    area.remove();
-
-    Swal.fire("Berhasil", "Berita acara & barang berhasil disimpan + PDF jadi", "success");
+    Swal.fire("Berhasil", "Data berhasil disimpan", "success");
+    resetForm();
 
   } catch (err) {
-    console.error("ERROR EXPORT:", err);
-    Swal.fire("Error", "Gagal menyimpan data & PDF", "error");
+    console.error(err);
+    Swal.fire("Error", "Terjadi kesalahan server", "error");
   }
 };
+const resetForm = () => {
+  // Reset form utama
+  setForm({
+    nomor: "",
+    tanggal: "",
+    jenis: "MASUK",
+    keterangan: "",
+    pihakA: { nama: "", jabatan: "" },
+    pihakB: { nama: "", jabatan: "" }
+  });
 
+  // Reset barang
+  setItems([]);
+
+  // Reset TTD state
+  setTtdPenyerah("");
+  setTtdPenerima("");
+
+  // Reset nama penyerah & penerima
+  setPenyerah({ nama: "", asal: "" });
+  setPenerima({ nama: "", asal: "" });
+
+  // Clear canvas safely
+  if (sigPenyerah.current) {
+    sigPenyerah.current.clear();
+  }
+
+  if (sigPenerima.current) {
+    sigPenerima.current.clear();
+  }
+
+  // Ambil nomor otomatis berikutnya
+  getNomorOtomatis?.();
+};
+
+      
+
+
+const uploadFoto = async (file) => {
+  const fd = new FormData();
+  fd.append("foto", file);
+
+  const res = await fetch("http://localhost/BA_barang_in-out/api/upload_foto_barang.php", {
+    method: "POST",
+    body: fd
+  });
+
+  return res.json();
+};
+const [editIndex, setEditIndex] = useState(null);
+const addItem = () => {
+  if (!newItem.nama || !newItem.jumlah) {
+    Swal.fire("Gagal", "Data barang belum lengkap", "warning");
+    return;
+  }
+
+  if (editIndex !== null) {
+    // MODE EDIT
+    const updated = [...items];
+    updated[editIndex] = newItem;
+    setItems(updated);
+    setEditIndex(null);
+  } else {
+    // MODE TAMBAH
+    setItems(prev => [...prev, newItem]);
+  }
+
+  // reset form
+  setNewItem({
+    nama: "",
+    jumlah: "",
+    tipe: "",
+    sn: "",
+    foto: null,
+    fotoPreview: ""
+  });
+};
 
 
 
@@ -529,15 +524,7 @@ if (!ttdPenyerah || !ttdPenerima || !ttdMengetahui) {
 
       {/* FORM UTAMA */}
       <div className="form-group">
-        <label className="form-label">
-          <span>Nomor Berita Acara</span>
-        </label>
-        <input
-          name="nomor"
-          value={form.nomor}
-          readOnly
-          style={{ width:180, background:"#f3f4f6", cursor:"not-allowed" }}
-        />
+        <label className="form-label"/>
         <div className="form-group"></div>
          <label className="form-label">
           <span>Tanggal</span>
@@ -566,203 +553,259 @@ if (!ttdPenyerah || !ttdPenerima || !ttdMengetahui) {
       </div>
 
       {/* BARANG */}
-      <h2 className="section-title">
-    <label className="form-label">
-          <span>Tambah Barang</span>
-          </label>
-      </h2>
+        <b className="form-group">Tambah Barang</b>
 
-      <div className="row">
-        <input name="nama" placeholder="Nama Barang" value={newItem.nama} onChange={handleNewItem} style={{ flex:2 }} />
-       <input
-            name="jumlah"
-            placeholder="Jumlah"
+        <div className="form-group">
+          <label>Nama Barang</label>
+          <input
             type="text"
-            value={newItem.jumlah}
-            onChange={(e) => {
-              const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
-              setNewItem((prev) => ({ ...prev, jumlah: onlyNumber }));
-            }}
-            style={{ width: 120 }}
+            name="nama"
+            value={newItem.nama}
+            onChange={handleNewItem}
           />
-        <input name="tipe" placeholder="Tipe" value={newItem.tipe} onChange={handleNewItem} style={{ flex:1 }} />
-        <input name="sn" placeholder="S/N" value={newItem.sn} onChange={handleNewItem} style={{ flex:1 }} />
-        <button 
-                type="button"
-                className="tambahitem"
-                onClick={addItem}
+        </div>
 
-                >Tambah</button>
-      </div>
+        <div className="form-group">
+          <label>Jumlah</label>
+          <input
+            type="number"
+            name="jumlah"
+            value={newItem.jumlah}
+            onChange={handleNewItem}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Tipe</label>
+          <input
+            type="text"
+            name="tipe"
+            value={newItem.tipe}
+            onChange={handleNewItem}
+          />
+        </div>
+          <div className="form-group">
+            <label>Foto Barang</label>
+
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setNewItem(p => ({
+                  ...p,
+                  foto: file,
+                  fotoPreview: URL.createObjectURL(file)
+                }));
+              }}
+            />
+
+            {newItem.fotoPreview && (
+              <img
+                src={newItem.fotoPreview}
+                alt="preview"
+                style={{
+                  marginTop: 8,
+                  width: 80,
+                  height: 80,
+                  objectFit: "cover",
+                  borderRadius: 8
+                }}
+              />
+            )}
+          </div>
+
+        <div className="form-group">
+          <label>S/N</label>
+          <input
+            type="text"
+            name="sn"
+            value={newItem.sn}
+            onChange={handleNewItem}
+          />
+        </div>
+
+        <button
+          type="button"
+          className="btn-tambah"
+          onClick={addItem}
+        >
+          Tambah
+        </button>
       
-      {/* TABLE BARANG */}
-      
-      <div className="table-wrapper">
+<div style={{ marginTop: 20 }}>
+  {items.length === 0 ? (
+    <div
+      style={{
+        textAlign: "center",
+        padding: 20,
+        background: "#f9fafb",
+        borderRadius: 12,
+        color: "#666"
+      }}
+    >
+      Belum ada barang
+    </div>
+  ) : (
+    items.map((it, i) => (
+      <div
+        key={i}
+        style={{
+          background: "#f9fafb",
+          padding: 16,
+          borderRadius: 14,
+          marginBottom: 12,
+          boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          {i + 1}. {it.nama}
+        </div>
+
+        <div style={{ fontSize: 14, marginBottom: 4 }}>
+          <b>Jumlah:</b> {it.jumlah}
+        </div>
+
+        <div style={{ fontSize: 14, marginBottom: 4 }}>
+          <b>Tipe:</b> {it.tipe}
+        </div>
+
+        <div style={{ fontSize: 14, marginBottom: 8 }}>
+          <b>S/N:</b> {it.sn}
+        </div>
+
+        {it.foto && (
+          <img
+            src={URL.createObjectURL(it.foto)}
+            alt="foto barang"
+            style={{
+              width: "100%",
+              maxHeight: 200,
+              objectFit: "cover",
+              borderRadius: 10,
+              marginBottom: 10
+            }}
+          />
+        )}
+
+        <button
+          onClick={() => removeItem(i)}
+          style={{
+            background: "#ef4444",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 14px",
+            cursor: "pointer"
+          }}
+        >
+          Hapus
+        </button>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>No</th><th>Nama</th><th>Jumlah</th><th>Tipe</th><th>S/N</th><th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 ? (
-            <tr><td colSpan="5" style={{textAlign:"center"}}>Belum ada barang</td></tr>
-          ) : items.map((it, i) => (
-            <tr key={i}>
-              <td>{i+1}</td>
-              <td>{it.nama}</td>
-              <td>{it.jumlah}</td>
-              <td>{it.tipe}</td>
-              <td>{it.sn}</td>
-              <td><button className=".btn-hapus" onClick={() => removeItem(i)}>Hapus</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-{/* TTD PENYERAH */}
-<span className="form-grup"><b>Tanda Tangan Penyerah</b></span>
-
-<div className="sig-form">
+    ))
+  )}
+</div>
+      
+{form.jenis === "MASUK" && (
+  <div className="sig-form">
   <input
-    placeholder="Nama"
+    placeholder="Nama Tamu (Penyerah)"
     value={penyerah.nama}
     onChange={(e) =>
       setPenyerah({ ...penyerah, nama: e.target.value })
     }
   />
-  <input
-    placeholder="Asal / Jabatan"
-    value={penyerah.asal}
-    onChange={(e) =>
-      setPenyerah({ ...penyerah, asal: e.target.value })
-    }
-  />
-</div>
-
-<div className="sig-wrapper">
+        <input
+        placeholder="Asal Tamu (Perusahaan/Instansi)"
+        value={penyerah.asal}
+        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
+      />
+  </div>
+)}
+{form.jenis === "MASUK" && (
+  <>
+    <span><b>Tanda Tangan Penyerah (Tamu)</b></span>
     <SignatureCanvas
       ref={sigPenyerah}
       penColor="black"
       canvasProps={{
-        width: 320,      
-        height: 140,     
+        width: 320,
+        height: 140,
         className: "sig-canvas"
       }}
-      onEnd={() => {
-        setTtdPenyerah(sigPenyerah.current.toDataURL("image/png"));
-      }}
+      onEnd={() =>
+        setTtdPenyerah(sigPenyerah.current.toDataURL("image/png"))
+      }
     />
-  <button
-    type="button"
-    className="sig-clear"
-    onClick={() => {
-      sigPenyerah.current.clear();
-      setTtdPenyerah("");
-    }}
-  >
-    Hapus
-  </button>
-</div>
+  </>
+)}
 
-{/* TTD PENERIMA */}
-<span className="form-grup"><b>Tanda Tangan Penerima</b></span>
-
-<div className="sig-form">
+{form.jenis === "KELUAR" && (
+  <div className="sig-form">
   <input
-    placeholder="Nama"
+    placeholder="Nama Tamu (Penerima)"
     value={penerima.nama}
     onChange={(e) =>
       setPenerima({ ...penerima, nama: e.target.value })
     }
   />
   <input
-    placeholder="Asal / Jabatan"
+    placeholder="Asal Tamu (Perusahaan/Instansi)"
     value={penerima.asal}
-    onChange={(e) =>
-      setPenerima({ ...penerima, asal: e.target.value })
-    }
+    onChange={(e)=>setPenerima({...penerima,asal:e.target.value})}
   />
-</div>
+  </div>
+)}
 
-<div className="sig-wrapper">
-  <SignatureCanvas
-    ref={sigPenerima}
-    penColor="black"
+{form.jenis === "KELUAR" && (
+  <>
+    <span><b>Tanda Tangan Penerima (Tamu)</b></span>
+    <SignatureCanvas
+      ref={sigPenerima}
+      penColor="black"
       canvasProps={{
-        width: 320,      
-        height: 140,     
+        width: 320,
+        height: 140,
         className: "sig-canvas"
       }}
-    onEnd={() =>
-      setTtdPenerima(sigPenerima.current.toDataURL())
-    }
-  />
+      onEnd={() =>
+        setTtdPenerima(sigPenerima.current.toDataURL("image/png"))
+      }
+    />
+  </>
+)}
 
-  <button
-    type="button"
-    className="sig-clear"
-    onClick={() => {
-      sigPenerima.current.clear();
-      setTtdPenerima("");
-    }}
-  >
-    Hapus
-  </button>
-</div>
+{(form.jenis === "MASUK" || form.jenis === "KELUAR") && (
+  <div className="sig-wrapper">
+    <button
+      type="button"
+      className="sig-clear"
+      onClick={() => {
+        if (form.jenis === "MASUK" && sigPenyerah.current) {
+          sigPenyerah.current.clear();
+          setTtdPenyerah("");
+        }
 
-{/* TTD MENGETAHUI */}
-<span className="form-grup"><b>Tanda Tangan Mengetahui</b></span>
-
-<div className="sig-form">
-  <input
-    placeholder="Nama"
-    value={mengetahui.nama}
-    onChange={(e) =>
-      setMengetahui({ ...mengetahui, nama: e.target.value })
-    }
-  />
-  <input
-    placeholder="Asal / Jabatan"
-    value={mengetahui.asal}
-    onChange={(e) =>
-      setMengetahui({ ...mengetahui, asal: e.target.value })
-    }
-  />
-</div>
-
-<div className="sig-wrapper">
-  <SignatureCanvas
-    ref={sigMengetahui}
-    penColor="black"
-      canvasProps={{
-        width: 320,      
-        height: 140,     
-        className: "sig-canvas"
+        if (form.jenis === "KELUAR" && sigPenerima.current) {
+          sigPenerima.current.clear();
+          setTtdPenerima("");
+        }
       }}
-    onEnd={() =>
-      setTtdMengetahui(sigMengetahui.current.toDataURL())
-    }
-  />
+    >
+      Hapus
+    </button>
+  </div>
+)}
 
-  <button
-    type="button"
-    className="sig-clear"
-    onClick={() => {
-      sigMengetahui.current.clear();
-      setTtdMengetahui("");
-    }}
-  >
-    Hapus
-  </button>
-</div>
 
       {/* PREVIEW PDF */}
-      <div style={{ marginTop:25 }}>
-        <button className="btn btn-primary" onClick={previewPDF}>
-          Preview & Export PDF
-        </button>
+      <div className="d-grid gap-2 col-6 mx-auto">
+      <button className="btn btn-primary" onClick={saveBerita}>
+        Simpan
+      </button>
       </div>
     </div>
     </div>
