@@ -274,29 +274,26 @@ td {
     return () => document.head.removeChild(style);
   }, []);
   
-useEffect(() => {
-  
-  const getNomorOtomatis = async () => {
-    try {
-      const res = await fetch(
-        `http://localhost/BA_barang_in-out/api/get_next_nomor_ba.php`
-      );
+const getNomorOtomatis = async () => {
+  try {
+    const res = await fetch(
+      "http://localhost/BA_barang_in-out/api/get_next_nomor_ba.php"
+    );
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (data.status === "success") {
-        setForm((p) => ({
-          ...p,
-          nomor: data.nomor, 
-        }));
-      } else {
-        console.error("Gagal ambil nomor:", data.message);
-      }
-    } catch (err) {
-      console.error("Gagal mengambil nomor BA:", err);
+    if (data.status === "success") {
+      setForm(p => ({
+        ...p,
+        nomor: data.nomor
+      }));
     }
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
 
+useEffect(() => {
   getNomorOtomatis();
 }, []);
 
@@ -360,13 +357,13 @@ const [penerima, setPenerima] = useState({ nama: "", asal: "" });
     return;
   }
 
-if (form.jenis === "MASUK" && !ttdPenerima) {
-  Swal.fire("TTD belum lengkap", "TTD Penerima wajib diisi", "warning");
+if (form.jenis === "MASUK" && !ttdPenyerah) {
+  Swal.fire("TTD belum lengkap", "TTD Penyerah wajib diisi", "warning");
   return;
 }
 
-if (form.jenis === "KELUAR" && !ttdPenyerah) {
-  Swal.fire("TTD belum lengkap", "TTD Penyerah wajib diisi", "warning");
+if (form.jenis === "KELUAR" && !ttdPenerima) {
+  Swal.fire("TTD belum lengkap", "TTD Penerima wajib diisi", "warning");
   return;
 }
 
@@ -375,23 +372,22 @@ if (form.jenis === "KELUAR" && !ttdPenyerah) {
     const resHeader = await fetch("http://localhost/BA_barang_in-out/api/save_berita.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nomor: form.nomor,
-        tanggal: form.tanggal,
-        jenis: form.jenis,
-        keterangan: form.keterangan,
-              pihakA: {
-                  nama: penyerah.nama,
-                  jabatan: penyerah.asal,
-                },
-
-                pihakB: {
-                  nama: penerima.nama,
-                  jabatan: penerima.asal,
-                },
-        ttd_penyerah: ttdPenyerah,
-        ttd_penerima: ttdPenerima,
-      })
+        body: JSON.stringify({
+          nomor: form.nomor,
+          tanggal: form.tanggal,
+          jenis: form.jenis,
+          keterangan: form.keterangan,
+          pihakA: {
+            nama: penyerah.nama,
+            jabatan: penyerah.asal
+          },
+          pihakB: {
+            nama: penerima.nama,
+            jabatan: penerima.asal
+          },
+          ttd_penyerah: form.jenis === "MASUK" ? ttdPenyerah : null,
+          ttd_penerima: form.jenis === "KELUAR" ? ttdPenerima : null
+        })
     }).then(r => r.json());
 
     if (resHeader.status !== "success") {
@@ -437,25 +433,42 @@ if (form.jenis === "KELUAR" && !ttdPenyerah) {
     Swal.fire("Error", "Terjadi kesalahan server", "error");
   }
 };
-      const resetForm = () => {
-        setForm({
-          nomor: "",
-          tanggal: "",
-          jenis: "MASUK",
-          keterangan: "",
-          pihakA: { nama: "", jabatan: "" },
-          pihakB: { nama: "", jabatan: "" }
-        });
+const resetForm = () => {
+  // Reset form utama
+  setForm({
+    nomor: "",
+    tanggal: "",
+    jenis: "MASUK",
+    keterangan: "",
+    pihakA: { nama: "", jabatan: "" },
+    pihakB: { nama: "", jabatan: "" }
+  });
 
-        setItems([]);
-        setTtdPenyerah("");
-        setTtdPenerima("");
+  // Reset barang
+  setItems([]);
 
+  // Reset TTD state
+  setTtdPenyerah("");
+  setTtdPenerima("");
 
-        sigPenyerah.current?.clear();
-        sigPenerima.current?.clear();
+  // Reset nama penyerah & penerima
+  setPenyerah({ nama: "", asal: "" });
+  setPenerima({ nama: "", asal: "" });
 
-      };
+  // Clear canvas safely
+  if (sigPenyerah.current) {
+    sigPenyerah.current.clear();
+  }
+
+  if (sigPenerima.current) {
+    sigPenerima.current.clear();
+  }
+
+  // Ambil nomor otomatis berikutnya
+  getNomorOtomatis?.();
+};
+
+      
 
 
 const uploadFoto = async (file) => {
@@ -687,96 +700,97 @@ const addItem = () => {
 </tbody>
 
       </table>
-
-{form.jenis === "KELUAR" && (
-  <>
-    <span><b>Tanda Tangan Penyerah</b></span>
-
-    <div className="sig-form">
-      <input
-        placeholder="Nama"
-        value={penyerah.nama}
-        onChange={(e)=>setPenyerah({...penyerah,nama:e.target.value})}
-      />
-      <input
-        placeholder="Jabatan"
-        value={penyerah.asal}
-        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
-      />
-    </div>
-
-    <div className="sig-wrapper">
-      <SignatureCanvas
-        ref={sigPenyerah}
-        penColor="black"
-        canvasProps={{
-          width: 320,
-          height: 140,
-          className: "sig-canvas"
-        }}
-        onEnd={()=>setTtdPenyerah(sigPenyerah.current.toDataURL())}
-      />
-    </div>
-  </>
-)}
-
-{form.jenis === "KELUAR" && (
-  <>
-    <span><b>Tanda Tangan Penyerah</b></span>
-
-    <div className="sig-form">
-      <input
-        placeholder="Nama"
-        value={penyerah.nama}
-        onChange={(e)=>setPenyerah({...penyerah,nama:e.target.value})}
-      />
-      <input
-        placeholder="Jabatan"
-        value={penyerah.asal}
-        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
-      />
-    </div>
-
-    <div className="sig-wrapper">
-      <SignatureCanvas
-        ref={sigPenyerah}
-        penColor="black"
-        canvasProps={{
-          width: 320,
-          height: 140,
-          className: "sig-canvas"
-        }}
-        onEnd={()=>setTtdPenyerah(sigPenyerah.current.toDataURL())}
-      />
-    </div>
-  </>
-)}
-
-<div className="sig-wrapper">
-  <SignatureCanvas
-    ref={sigPenerima}
-    penColor="black"
-      canvasProps={{
-        width: 320,      
-        height: 140,     
-        className: "sig-canvas"
-      }}
-    onEnd={() =>
-    setTtdPenerima(sigPenerima.current.toDataURL("image/png"))
+      
+{form.jenis === "MASUK" && (
+  <div className="sig-form">
+  <input
+    placeholder="Nama Tamu (Penyerah)"
+    value={penyerah.nama}
+    onChange={(e) =>
+      setPenyerah({ ...penyerah, nama: e.target.value })
     }
   />
+        <input
+        placeholder="Asal Tamu (Perusahaan/Instansi)"
+        value={penyerah.asal}
+        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
+      />
+  </div>
+)}
+{form.jenis === "MASUK" && (
+  <>
+    <span><b>Tanda Tangan Penyerah (Tamu)</b></span>
+    <SignatureCanvas
+      ref={sigPenyerah}
+      penColor="black"
+      canvasProps={{
+        width: 320,
+        height: 140,
+        className: "sig-canvas"
+      }}
+      onEnd={() =>
+        setTtdPenyerah(sigPenyerah.current.toDataURL("image/png"))
+      }
+    />
+  </>
+)}
 
-  <button
-    type="button"
-    className="sig-clear"
-    onClick={() => {
-      sigPenerima.current.clear();
-      setTtdPenerima("");
-    }}
-  >
-    Hapus
-  </button>
-</div>
+{form.jenis === "KELUAR" && (
+  <div className="sig-form">
+  <input
+    placeholder="Nama Tamu (Penerima)"
+    value={penerima.nama}
+    onChange={(e) =>
+      setPenerima({ ...penerima, nama: e.target.value })
+    }
+  />
+  <input
+    placeholder="Asal Tamu (Perusahaan/Instansi)"
+    value={penerima.asal}
+    onChange={(e)=>setPenerima({...penerima,asal:e.target.value})}
+  />
+  </div>
+)}
+
+{form.jenis === "KELUAR" && (
+  <>
+    <span><b>Tanda Tangan Penerima (Tamu)</b></span>
+    <SignatureCanvas
+      ref={sigPenerima}
+      penColor="black"
+      canvasProps={{
+        width: 320,
+        height: 140,
+        className: "sig-canvas"
+      }}
+      onEnd={() =>
+        setTtdPenerima(sigPenerima.current.toDataURL("image/png"))
+      }
+    />
+  </>
+)}
+
+{(form.jenis === "MASUK" || form.jenis === "KELUAR") && (
+  <div className="sig-wrapper">
+    <button
+      type="button"
+      className="sig-clear"
+      onClick={() => {
+        if (form.jenis === "MASUK" && sigPenyerah.current) {
+          sigPenyerah.current.clear();
+          setTtdPenyerah("");
+        }
+
+        if (form.jenis === "KELUAR" && sigPenerima.current) {
+          sigPenerima.current.clear();
+          setTtdPenerima("");
+        }
+      }}
+    >
+      Hapus
+    </button>
+  </div>
+)}
 
 
       {/* PREVIEW PDF */}

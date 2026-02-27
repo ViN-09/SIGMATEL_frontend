@@ -17,6 +17,7 @@ export default function BeritaAcaraTable({ data }) {
 
   /* ================= APPROVE ================= */
 const approveBerita = async (id) => {
+  
 
   const user_id = localStorage.getItem("user_id");
 
@@ -37,6 +38,27 @@ const approveBerita = async (id) => {
     Swal.fire("Gagal", data.message, "error");
   }
 };
+const approveStaff = async (id) => {
+  const res = await fetch(
+    "http://localhost/ttc_teling/BA_barang_in-out/api/approve_staff.php",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    }
+  );
+
+  const data = await res.json();
+
+  if (data.status === "success") {
+    Swal.fire("Berhasil", "Staff approve berhasil", "success");
+    window.location.reload();
+  } else {
+    Swal.fire("Gagal", data.message, "error");
+  }
+};
+const loginSite = "ttc_teling"; // sementara hardcode, bisa diambil dari user session nanti
+
 
 const [detailData, setDetailData] = useState(null);
 const [currentPage, setCurrentPage] = useState(1);
@@ -88,25 +110,43 @@ const buildPDFHTML = (d, page = 1) => {
         }
       </tbody>
     </table>
+<div style="display:flex; justify-content:space-around; margin-top:50px">
 
-    <div style="display:flex; justify-content:space-around; margin-top:50px">
+  <!-- PENYERAH -->
+  <div style="text-align:center; width:30%">
+    <b>Yang Menyerahkan</b><br/><br/>
 
-      <div style="text-align:center; width:30%">
-        <b>Yang Menyerahkan</b><br/><br/>
-        <img src="${d.ttd_penyerah}" height="70"/><br/>
-        <u>${d.pihakA_nama}</u><br/>
-        ${d.pihakA_jabatan}
-      </div>
+    ${
+      d.jenis === "MASUK"
+        ? `<img src="${d.ttd_penyerah}" height="70"/><br/>`
+        : `<img src="${d.staff_ttd_approval}" height="70"/><br/>`
+    }
 
-      <div style="text-align:center; width:30%">
-        <b>Yang Menerima</b><br/><br/>
-        <img src="${d.ttd_penerima}" height="70"/><br/>
-        <u>${d.pihakB_nama}</u><br/>
-        ${d.pihakB_jabatan}
-      </div>
-    </div>
-
+    ${
+      d.jenis === "MASUK"
+        ? `<u>${d.pihakA_nama}</u><br/>${d.pihakA_jabatan}`
+        : `<u>Staff Site</u>`
+    }
   </div>
+
+  <!-- PENERIMA -->
+  <div style="text-align:center; width:30%">
+    <b>Yang Menerima</b><br/><br/>
+
+    ${
+      d.jenis === "MASUK"
+        ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>`
+        : `<img src="${d.ttd_penerima}" height="70"/><br/>`
+    }
+
+    ${
+      d.jenis === "MASUK"
+        ? `<u>Staff Site</u>`
+        : `<u>${d.pihakB_nama}</u><br/>${d.pihakB_jabatan}`
+    }
+  </div>
+
+</div>
 
           <!-- MENGETAHUI -->
 <div style="text-align:center; margin-top:40px">
