@@ -360,10 +360,15 @@ const [penerima, setPenerima] = useState({ nama: "", asal: "" });
     return;
   }
 
-  if (!ttdPenyerah || !ttdPenerima ) {
-    Swal.fire("TTD belum lengkap", "Semua pihak wajib tanda tangan", "warning");
-    return;
-  }
+if (form.jenis === "MASUK" && !ttdPenerima) {
+  Swal.fire("TTD belum lengkap", "TTD Penerima wajib diisi", "warning");
+  return;
+}
+
+if (form.jenis === "KELUAR" && !ttdPenyerah) {
+  Swal.fire("TTD belum lengkap", "TTD Penyerah wajib diisi", "warning");
+  return;
+}
 
   try {
     // 1️⃣ Simpan header
@@ -683,70 +688,69 @@ const addItem = () => {
 
       </table>
 
-{/* TTD PENYERAH */}
-<span className="form-grup"><b>Tanda Tangan Penyerah</b></span>
+{form.jenis === "KELUAR" && (
+  <>
+    <span><b>Tanda Tangan Penyerah</b></span>
 
-<div className="sig-form">
-  <input
-    placeholder="Nama"
-    value={penyerah.nama}
-    onChange={(e) =>
-      setPenyerah({ ...penyerah, nama: e.target.value })
-    }
-  />
-  <input
-    placeholder="Asal / Jabatan"
-    value={penyerah.asal}
-    onChange={(e) =>
-      setPenyerah({ ...penyerah, asal: e.target.value })
-    }
-  />
-</div>
+    <div className="sig-form">
+      <input
+        placeholder="Nama"
+        value={penyerah.nama}
+        onChange={(e)=>setPenyerah({...penyerah,nama:e.target.value})}
+      />
+      <input
+        placeholder="Jabatan"
+        value={penyerah.asal}
+        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
+      />
+    </div>
 
-<div className="sig-wrapper">
-    <SignatureCanvas
-      ref={sigPenyerah}
-      penColor="black"
-      canvasProps={{
-        width: 320,      
-        height: 140,     
-        className: "sig-canvas"
-      }}
-      onEnd={() => {
-        setTtdPenyerah(sigPenyerah.current.toDataURL("image/png"));
-      }}
-    />
-  <button
-    type="button"
-    className="sig-clear"
-    onClick={() => {
-      sigPenyerah.current.clear();
-      setTtdPenyerah("");
-    }}
-  >
-    Hapus
-  </button>
-</div>
+    <div className="sig-wrapper">
+      <SignatureCanvas
+        ref={sigPenyerah}
+        penColor="black"
+        canvasProps={{
+          width: 320,
+          height: 140,
+          className: "sig-canvas"
+        }}
+        onEnd={()=>setTtdPenyerah(sigPenyerah.current.toDataURL())}
+      />
+    </div>
+  </>
+)}
 
-{/* TTD PENERIMA */}
-<span className="form-grup"><b>Tanda Tangan Penerima</b></span>
+{form.jenis === "KELUAR" && (
+  <>
+    <span><b>Tanda Tangan Penyerah</b></span>
 
-<div className="sig-form">
-  <input
-    placeholder="Nama"
-    value={penerima.nama}
-    onChange={(e) =>
-      setPenerima({ ...penerima, nama: e.target.value })
-    }
-  />
-  <input
-    placeholder="Asal / Jabatan"
-    value={penerima.asal}
-    onChange={(e) =>
-      setPenerima({ ...penerima, asal: e.target.value })
-    }
-  />
-</div>
+    <div className="sig-form">
+      <input
+        placeholder="Nama"
+        value={penyerah.nama}
+        onChange={(e)=>setPenyerah({...penyerah,nama:e.target.value})}
+      />
+      <input
+        placeholder="Jabatan"
+        value={penyerah.asal}
+        onChange={(e)=>setPenyerah({...penyerah,asal:e.target.value})}
+      />
+    </div>
+
+    <div className="sig-wrapper">
+      <SignatureCanvas
+        ref={sigPenyerah}
+        penColor="black"
+        canvasProps={{
+          width: 320,
+          height: 140,
+          className: "sig-canvas"
+        }}
+        onEnd={()=>setTtdPenyerah(sigPenyerah.current.toDataURL())}
+      />
+    </div>
+  </>
+)}
 
 <div className="sig-wrapper">
   <SignatureCanvas

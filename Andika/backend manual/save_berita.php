@@ -1,71 +1,68 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Content-Type: application/json");
-error_reporting(0);
+
 require "koneksi.php";
 
-// ✅ AMBIL JSON DARI REACT
-$raw = file_get_contents("php://input");
-$input = json_decode($raw, true);
+$input = json_decode(file_get_contents("php://input"), true);
 
-// ✅ CEK JSON VALID
 if (!$input) {
-  echo json_encode([
-    "status" => "error",
-    "message" => "Data JSON kosong atau tidak valid"
-  ]);
+  echo json_encode(["status"=>"error","message"=>"Input kosong"]);
   exit;
 }
 
-$nomor       = $input["nomor"] ?? "";
-$tanggal     = $input["tanggal"] ?? "";
-$jenis       = $input["jenis"] ?? "";
-$keterangan  = $input["keterangan"] ?? "";
+/* ===== TEST SITE ===== */
+$site = "TTC Teling"; // ganti jika mau Paniki
 
-$pihakA_nama = $input["pihakA"]["nama"] ?? "";
-$pihakA_jab  = $input["pihakA"]["jabatan"] ?? "";
+$nomor = $input['nomor'] ?? "";
+$tanggal = $input['tanggal'] ?? ""; 
+$jenis = $input['jenis'] ?? "";
+$keterangan = $input['keterangan'] ?? "";
 
-$pihakB_nama = $input["pihakB"]["nama"] ?? "";
-$pihakB_jab  = $input["pihakB"]["jabatan"] ?? "";
+$pihakA_nama = $input['pihakA']['nama'] ?? "";
+$pihakA_jabatan = $input['pihakA']['jabatan'] ?? "";
+$pihakB_nama = $input['pihakB']['nama'] ?? "";
+$pihakB_jabatan = $input['pihakB']['jabatan'] ?? "";
 
-// ✅ VALIDASI WAJIB
-if ($nomor == "" || $tanggal == "") {
+$ttd_penyerah = $input['ttd_penyerah'] ?? "";
+$ttd_penerima = $input['ttd_penerima'] ?? "";
+
+$insert = mysqli_query($koneksi, "
+    INSERT INTO berita_acara (
+        nomor,
+        tanggal,
+        jenis,
+        keterangan,
+        pihakA_nama,
+        pihakA_jabatan,
+        pihakB_nama,
+        pihakB_jabatan,
+        ttd_penyerah,
+        ttd_penerima,
+        approval_status,
+        Site
+    ) VALUES (
+        '$nomor',
+        '$tanggal',
+        '$jenis',
+        '$keterangan',
+        '$pihakA_nama',
+        '$pihakA_jabatan',
+        '$pihakB_nama',
+        '$pihakB_jabatan',
+        '$ttd_penyerah',
+        '$ttd_penerima',
+        'pending',
+        '$site'
+    )
+");
+
+if ($insert) {
   echo json_encode([
-    "status" => "error",
-    "message" => "Nomor atau Tanggal kosong"
-  ]);
-  exit;
-}
-
-// ✅ INSERT KE DATABASE
-$sql = "INSERT INTO berita_acara
-(nomor, tanggal, jenis, keterangan, pihakA_nama, pihakA_jabatan, pihakB_nama, pihakB_jabatan)
-VALUES (
-'$nomor',
-'$tanggal',
-'$jenis',
-'$keterangan',
-'$pihakA_nama',
-'$pihakA_jab',
-'$pihakB_nama',
-'$pihakB_jab'
-)";
-
-$result = mysqli_query($koneksi, $sql);
-
-if ($result) {
-  $id_berita = mysqli_insert_id($koneksi);
-
-  echo json_encode([
-    "status" => "success",
-    "id_berita" => $id_berita
+    "status"=>"success",
+    "id_berita"=>mysqli_insert_id($koneksi)
   ]);
 } else {
-  echo json_encode([
-    "status" => "error",
-    "message" => mysqli_error($koneksi)
-  ]);
+  echo json_encode(["status"=>"error","message"=>"Gagal simpan"]);
 }
-

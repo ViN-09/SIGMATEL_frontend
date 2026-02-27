@@ -17,23 +17,24 @@ export default function BeritaAcaraTable({ data }) {
 
   /* ================= APPROVE ================= */
 const approveBerita = async (id) => {
+
+  const user_id = localStorage.getItem("user_id");
+
   const res = await fetch(
     "http://localhost/BA_barang_in-out/api/approve_berita.php",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id, user_id })
     }
   );
 
   const data = await res.json();
 
   if (data.status === "success") {
-    Swal.fire("Berhasil", "Berita acara disetujui", "success");
-    return true;
+    Swal.fire("Berhasil", "Approved oleh BM", "success");
   } else {
     Swal.fire("Gagal", data.message, "error");
-    return false;
   }
 };
 
@@ -108,8 +109,8 @@ const buildPDFHTML = (d, page = 1) => {
   </div>
 
           <!-- MENGETAHUI -->
-  <div style="text-align:center; margin-top:40px">
-    <b>Mengetahui</b><br/><br/>
+<div style="text-align:center; margin-top:40px">
+  <b>Mengetahui</b><br/><br/>
 
     ${
       d.approval_status === "approved"
@@ -120,10 +121,10 @@ const buildPDFHTML = (d, page = 1) => {
           </button>`
     }
 
-    <br/>
-    <u>Djefli Dalita</u><br/>
-    Building Manager
-  </div>
+  <br/>
+  <u>${d.bm_nama}</u><br/>
+  Building Manager
+</div>
 
     `;
   }
@@ -260,14 +261,12 @@ const showModal = (detail, page = 1) => {
         exportBtn.onclick = () => exportPDF(detail);
       }
 
-      if (approveBtn) {
-        approveBtn.onclick = async () => {
-          const ok = await approveBerita(detail.id);
-          if (ok) {
-            openDetail(detail.id); // reload data + modal
-          }
-        };
-      }
+       if (approveBtn) {
+          approveBtn.onclick = async () => {
+            await approveBerita(detail.id);
+            openDetail(detail.id); // reload modal
+          };
+        }
     }
   });
 };

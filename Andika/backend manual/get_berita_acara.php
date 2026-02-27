@@ -1,23 +1,12 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-require_once "koneksi.php";
+require "koneksi.php";
 
-if (!$koneksi) {
-  echo json_encode([
-    "status" => "error",
-    "message" => "Koneksi database gagal"
-  ]);
-  exit;
-}
+/* HARD CODE SITE */
+$site = "TTC Teling";
 
-/*
-  Ambil:
-  - berita acara
-  - serial number dari barang_list
-*/
 $sql = "
   SELECT
     ba.id AS id_berita,
@@ -29,10 +18,12 @@ $sql = "
     ba.pihakA_jabatan,
     ba.pihakB_nama,
     ba.pihakB_jabatan,
+    ba.approval_status,
     ba.created_at,
     GROUP_CONCAT(bl.sn SEPARATOR ', ') AS sn
   FROM berita_acara ba
   LEFT JOIN barang_list bl ON bl.id_berita = ba.id
+  WHERE ba.site = '$site'
   GROUP BY ba.id
   ORDER BY ba.created_at DESC
 ";
@@ -57,3 +48,5 @@ echo json_encode([
   "status" => "success",
   "data" => $data
 ]);
+
+exit;
