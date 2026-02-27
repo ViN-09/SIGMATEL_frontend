@@ -20,7 +20,8 @@ const approveBerita = async (id) => {
   
 
   const user_id = localStorage.getItem("user_id");
-
+  const loginSite = "ttc_teling"; // sementara hardcode, bisa diambil dari user session nanti
+ 
   const res = await fetch(
     "http://localhost/BA_barang_in-out/api/approve_berita.php",
     {
@@ -57,7 +58,7 @@ const approveStaff = async (id) => {
     Swal.fire("Gagal", data.message, "error");
   }
 };
-const loginSite = "ttc_teling"; // sementara hardcode, bisa diambil dari user session nanti
+
 
 
 const [detailData, setDetailData] = useState(null);
@@ -119,13 +120,13 @@ const buildPDFHTML = (d, page = 1) => {
     ${
       d.jenis === "MASUK"
         ? `<img src="${d.ttd_penyerah}" height="70"/><br/>`
-        : `<img src="${d.staff_ttd_approval}" height="70"/><br/>`
+        : `<img src="${d.staff_ttd_approval}" height="70"/><br/>`// ttd staff untuk jenis keluar, karena yang menyerahkan adalah staff site
     }
 
     ${
       d.jenis === "MASUK"
         ? `<u>${d.pihakA_nama}</u><br/>${d.pihakA_jabatan}`
-        : `<u>Staff Site</u>`
+        : `<u>Staff Site</u>` // nama staff bisa ditampilkan jika sudah login dan data ttd_staff disimpan di database, untuk sementara kita tampilkan generic saja
     }
   </div>
 
@@ -135,14 +136,14 @@ const buildPDFHTML = (d, page = 1) => {
 
     ${
       d.jenis === "MASUK"
-        ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>`
-        : `<img src="${d.ttd_penerima}" height="70"/><br/>`
+        ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // ttd staff untuk jenis masuk, karena yang menerima adalah staff site
+        : `<img src="${d.ttd_penerima}" height="70"/><br/>` // untuk jenis keluar, yang menerima adalah pihak B (vendor/kontraktor) sehingga ttd nya diambil dari ttd_penerima
     }
 
     ${
       d.jenis === "MASUK"
-        ? `<u>Staff Site</u>`
-        : `<u>${d.pihakB_nama}</u><br/>${d.pihakB_jabatan}`
+        ? `<u>Staff Site</u>` // nama staff bisa ditampilkan jika sudah login dan data ttd_staff disimpan di database, untuk sementara kita tampilkan generic saja
+        : `<u>${d.pihakB_nama}</u><br/>${d.pihakB_jabatan}` // untuk jenis masuk, yang menerima adalah pihak B (vendor/kontraktor) sehingga namanya diambil dari pihakB_nama
     }
   </div>
 
@@ -162,9 +163,9 @@ const buildPDFHTML = (d, page = 1) => {
     }
 
   <br/>
-  <u>${d.bm_nama}</u><br/>
-  Building Manager
-</div>
+  <u>${d.bm_nama}</u><br/> 
+  Building Manager 
+</div> 
 
     `;
   }

@@ -369,11 +369,12 @@ if (form.jenis === "KELUAR" && !ttdPenerima) {
 
   try {
     // 1️⃣ Simpan header
+    const user_id = localStorage.getItem("user_id") || 1; // sementara hardcode user_id, nanti bisa diambil dari session/login
     const resHeader = await fetch("http://localhost/BA_barang_in-out/api/save_berita.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nomor: form.nomor,
+          nomor: form.nomor, // nomor BA bisa di-generate otomatis di backend berdasarkan tanggal dan nomor urut, untuk sementara kita kirim dari frontend
           tanggal: form.tanggal,
           jenis: form.jenis,
           keterangan: form.keterangan,
@@ -635,71 +636,78 @@ const addItem = () => {
           Tambah
         </button>
       
-      {/* TABLE BARANG */}
-      
-      <div className="table-wrapper">
-      </div>
-      <table>
-       <thead>
-        <tr>
-          <th>No</th>
-          <th>Nama</th>
-          <th>Jumlah</th>
-          <th>Tipe</th>
-          <th>S/N</th>
-          <th>Foto</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-<tbody>
+<div style={{ marginTop: 20 }}>
   {items.length === 0 ? (
-    <tr>
-      <td colSpan="7" style={{ textAlign: "center" }}>
-        Belum ada barang
-      </td>
-    </tr>
+    <div
+      style={{
+        textAlign: "center",
+        padding: 20,
+        background: "#f9fafb",
+        borderRadius: 12,
+        color: "#666"
+      }}
+    >
+      Belum ada barang
+    </div>
   ) : (
     items.map((it, i) => (
-      <tr key={i}>
-        <td>{i + 1}</td>
-        <td>{it.nama}</td>
-        <td>{it.jumlah}</td>
-        <td>{it.tipe}</td>
-        <td>{it.sn}</td>
+      <div
+        key={i}
+        style={{
+          background: "#f9fafb",
+          padding: 16,
+          borderRadius: 14,
+          marginBottom: 12,
+          boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          {i + 1}. {it.nama}
+        </div>
 
-        {/* FOTO */}
-          <td>
-            {it.foto ? (
-              <img
-                src={URL.createObjectURL(it.foto)}
-                alt="foto barang"
-                style={{
-                  width: 60,
-                  height: 60,
-                  objectFit: "cover",
-                  borderRadius: 6
-                }}
-              />
-            ) : (
-              "-"
-            )}
-          </td>
+        <div style={{ fontSize: 14, marginBottom: 4 }}>
+          <b>Jumlah:</b> {it.jumlah}
+        </div>
 
-        {/* AKSI */}
-        <td>
-          <button
-            className="btn-hapus"
-            onClick={() => removeItem(i)}
-          >
-            Hapus
-          </button>
-        </td>
-      </tr>
+        <div style={{ fontSize: 14, marginBottom: 4 }}>
+          <b>Tipe:</b> {it.tipe}
+        </div>
+
+        <div style={{ fontSize: 14, marginBottom: 8 }}>
+          <b>S/N:</b> {it.sn}
+        </div>
+
+        {it.foto && (
+          <img
+            src={URL.createObjectURL(it.foto)}
+            alt="foto barang"
+            style={{
+              width: "100%",
+              maxHeight: 200,
+              objectFit: "cover",
+              borderRadius: 10,
+              marginBottom: 10
+            }}
+          />
+        )}
+
+        <button
+          onClick={() => removeItem(i)}
+          style={{
+            background: "#ef4444",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 14px",
+            cursor: "pointer"
+          }}
+        >
+          Hapus
+        </button>
+      </div>
     ))
   )}
-</tbody>
-
-      </table>
+</div>
       
 {form.jenis === "MASUK" && (
   <div className="sig-form">
