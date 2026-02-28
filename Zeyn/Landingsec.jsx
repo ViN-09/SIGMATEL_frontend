@@ -4,6 +4,7 @@ import "./landing.css";
 import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import InfoTamu from "./InfoTamu.jsx";
 
 const API_HOST = "http://127.0.0.1:8000";
 
@@ -42,7 +43,6 @@ function getSiteConfig() {
   };
 }
 
-/* ===================== Utils ===================== */
 function formatTanggalWaktu(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -59,7 +59,7 @@ function buildCandidates(apiHost, fileName) {
   const bust = `?t=${Date.now()}`;
 
   return [
-    `${base}/storage/visitors/${clean}${bust}`, 
+    `${base}/storage/visitors/${clean}${bust}`,
     `${base}/storage/visitor/${clean}${bust}`,
     `${base}/storage/dokumentasi/${clean}${bust}`,
     `${base}/storage/uploads/${clean}${bust}`,
@@ -78,7 +78,6 @@ function dataUrlToFile(dataUrl, filename = "capture.jpg") {
   return new File([u8arr], filename, { type: mime });
 }
 
-
 function pickSavedFilename(json, type) {
   const key = type === "in" ? "dokumentasi_in" : "dokumentasi_out";
   const v =
@@ -90,7 +89,6 @@ function pickSavedFilename(json, type) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
 
-/* ===================== Small Components ===================== */
 function ImageWithFallback({ apiHost, fileName, alt }) {
   const candidates = useMemo(() => buildCandidates(apiHost, fileName), [apiHost, fileName]);
   const [idx, setIdx] = useState(0);
@@ -117,105 +115,7 @@ function ImageWithFallback({ apiHost, fileName, alt }) {
   );
 }
 
-function ModalInfo({ open, onClose, apiHost, tamu }) {
-  if (!open) return null;
 
-  const fotoMasukName = tamu?.dokumentasi_in || "";
-  const fotoKeluarName = tamu?.dokumentasi_out || "";
-  const signName = tamu?.signature || "";
-  const signatureUrl = signName ? `${apiHost.replace(/\/$/, "")}/storage/signatures/${signName}?t=${Date.now()}` : "";
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9998,
-        padding: 16,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 14,
-          width: "min(820px, 100%)",
-          maxHeight: "85vh",
-          overflow: "auto",
-          padding: 16,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="d-flex align-items-center mb-2">
-          <h5 className="mb-0">Info Tamu</h5>
-          <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
-            Tutup
-          </button>
-        </div>
-
-        <div style={{ fontSize: 14 }}>
-          <div className="row g-2">
-            <div className="col-md-6">
-              <div className="p-2 border rounded">
-                <div className="mb-2"><b>Nama</b>: {tamu?.name || "-"}</div>
-                <div className="mb-2"><b>Perusahaan</b>: {tamu?.company || "-"}</div>
-                <div className="mb-2"><b>Telepon</b>: {tamu?.phone || "-"}</div>
-                <div className="mb-2"><b>Jenis ID</b>: {tamu?.id_type || "-"}</div>
-                <div className="mb-2"><b>No ID</b>: {tamu?.id_number || "-"}</div>
-                <div className="mb-2"><b>Aktivitas</b>: {tamu?.activity || "-"}</div>
-                <div className="mb-2"><b>Ruang Kerja</b>: {tamu?.ruang_kerja || "-"}</div>
-                <div className="mb-2"><b>No VISIT / E-SIK</b>: {tamu?.visit_id || "-"}</div>
-                <div className="mb-2"><b>Status</b>: {tamu?.status || "-"}</div>
-                <div className="mb-2"><b>Dibuat</b>: {formatTanggalWaktu(tamu?.created_at)}</div>
-                <div className="mb-2"><b>Update</b>: {formatTanggalWaktu(tamu?.updated_at)}</div>
-              </div>
-            </div>
-
-            <div className="col-md-6">
-              <div className="p-2 border rounded mb-2">
-                <div className="mb-2"><b>Tanda Tangan</b></div>
-                {signatureUrl ? (
-                  <img
-                    src={signatureUrl}
-                    alt="Tanda Tangan"
-                    style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)" }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div>-</div>
-                )}
-              </div>
-
-              <div className="p-2 border rounded mb-2">
-                <div className="mb-2"><b>Foto Masuk</b></div>
-                <ImageWithFallback apiHost={apiHost} fileName={fotoMasukName} alt="Foto Masuk" />
-                {fotoMasukName ? (
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{fotoMasukName}</div>
-                ) : null}
-              </div>
-
-              <div className="p-2 border rounded">
-                <div className="mb-2"><b>Foto Keluar</b></div>
-                <ImageWithFallback apiHost={apiHost} fileName={fotoKeluarName} alt="Foto Keluar" />
-                {fotoKeluarName ? (
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{fotoKeluarName}</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ===================== Camera Modal ===================== */
 function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environment" }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -327,8 +227,7 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
         <div className="d-flex align-items-center p-3 border-bottom">
           <div>
             <div style={{ fontWeight: 700 }}>{title || "Ambil Foto"}</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}></div>
           </div>
           <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
             Tutup
@@ -415,20 +314,18 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
             )}
           </div>
 
-          <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}>
-          </div>
+          <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}></div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ===================== Main ===================== */
 export default function Landingsec() {
-const SITE = getSiteConfig();
-const username = SITE.username;
-const ttc = SITE.ttc;
-const apiHost = API_HOST;
+  const SITE = getSiteConfig();
+  const username = SITE.username;
+  const ttc = SITE.ttc;
+  const apiHost = API_HOST;
 
   useEffect(() => {
     sessionStorage.setItem("username", username);
@@ -449,9 +346,8 @@ const apiHost = API_HOST;
   const [loading, setLoading] = useState(false);
 
   const [showPopup, setShowPopup] = useState(false);
-  const [selectedTamu, setSelectedTamu] = useState(null);
+  const [selectedTamu, setSelectedTamu] = useState({});
 
-  // modal kamera state
   const [cam, setCam] = useState({ open: false, id: null, type: "in" });
 
   const listURL = useMemo(() => `${apiHost}/api/${ttc}/visitor/waiting`, [apiHost, ttc]);
@@ -506,19 +402,16 @@ const apiHost = API_HOST;
     fetchTamu();
   }, [listURL]);
 
-  // ✅ Approve: langsung buka modal kamera (type in)
   const handleApproveClick = (id) => {
     setUploading((prev) => ({ ...prev, [id]: "in" }));
     setCam({ open: true, id, type: "in" });
   };
 
-  // ✅ Keluar: langsung buka modal kamera (type out)
   const handleKeluarClick = (id) => {
     setUploading((prev) => ({ ...prev, [id]: "out" }));
     setCam({ open: true, id, type: "out" });
   };
 
-  
   const handleUploadFoto = async (file, id, type) => {
     if (!file) return;
 
@@ -542,36 +435,23 @@ const apiHost = API_HOST;
         return;
       }
 
-      const savedName = pickSavedFilename(json, type) || file.name; // ✅ gunakan nama dari server kalau ada
+      const savedName = pickSavedFilename(json, type) || file.name;
 
       if (type === "in") {
         setTamu((prev) =>
-          prev.map((t) =>
-            t.id === id
-              ? { ...t, status: "approved", dokumentasi_in: savedName }
-              : t
-          )
+          prev.map((t) => (t.id === id ? { ...t, status: "approved", dokumentasi_in: savedName } : t))
         );
         setUploading((prev) => ({ ...prev, [id]: false }));
         showToast("Tamu Berhasil Approved", "success");
       }
 
       if (type === "out") {
-        // update dulu (kalau kamu sempat lihat di UI), lalu sesuai patokan waiting bisa hilang
-        setTamu((prev) =>
-          prev.map((t) =>
-            t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t
-          )
-        );
-
-        // kalau requirement: selesai hilang dari waiting
+        setTamu((prev) => prev.map((t) => (t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t)));
         setTamu((prev) => prev.filter((t) => t.id !== id));
-
         setUploading((prev) => ({ ...prev, [id]: false }));
         showToast("Tamu Out", "success");
       }
 
-      // ✅ paling aman: refresh dari server (biar nama & status benar 100%)
       await fetchTamu();
     } catch (err) {
       console.error("Error upload foto:", err);
@@ -606,7 +486,27 @@ const apiHost = API_HOST;
   };
 
   const openInfo = (t) => {
-    setSelectedTamu(t);
+    const fotoMasuk = t?.dokumentasi_in ? `${apiHost}/storage/visitors/${t.dokumentasi_in}` : "-";
+    const fotoKeluar = t?.dokumentasi_out ? `${apiHost}/storage/visitors/${t.dokumentasi_out}` : "-";
+    const tandaTangan = t?.signature ? `${apiHost}/storage/signatures/${t.signature}` : "-";
+
+    setSelectedTamu({
+      Nama: t?.name,
+      Perusahaan: t?.company,
+      Telepon: t?.phone,
+      "Jenis ID": t?.id_type,
+      "No ID": t?.id_number,
+      Aktivitas: t?.activity,
+      "Ruang Kerja": t?.ruang_kerja,
+      "No VISIT / E-SIK": t?.visit_id,
+      Status: t?.status,
+      "Tanda Tangan": tandaTangan,
+      "Foto Masuk": fotoMasuk,
+      "Foto Keluar": fotoKeluar,
+      "Dibuat Pada": t?.created_at,
+      "Diperbarui Pada": t?.updated_at,
+    });
+
     setShowPopup(true);
   };
 
@@ -617,7 +517,10 @@ const apiHost = API_HOST;
     <div className="dashboard-container">
       <div className="main-content">
         <div className="d-flex align-items-center mb-3">
-          <h3 className="security-title mb-3" style={{ textAlign: "center", width: "100%" }}> Approval Tamu </h3>
+          <h3 className="security-title mb-3" style={{ textAlign: "center", width: "100%" }}>
+            {" "}
+            Approval Tamu{" "}
+          </h3>
         </div>
 
         <section className="summary-section">
@@ -725,10 +628,8 @@ const apiHost = API_HOST;
         </section>
       </div>
 
-      {/* Modal Info */}
-      <ModalInfo open={showPopup} onClose={() => setShowPopup(false)} apiHost={apiHost} tamu={selectedTamu} />
+      <InfoTamu open={showPopup} onClose={() => setShowPopup(false)} data={selectedTamu} />
 
-      {/* Modal Camera */}
       <CameraModal
         open={cam.open}
         onClose={() => {

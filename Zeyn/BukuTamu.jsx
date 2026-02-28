@@ -1,26 +1,55 @@
 import { useEffect, useMemo, useState } from "react";
-import "./BukuTamu.css";
-import Swal from "sweetalert2";
+import "../../FrontendScript2/Zeyn/Landingsec.css";
+import InfoTamu from "./InfoTamu";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
-const HARDCODE_USERNAME = "zeyn";
-const HARDCODE_TTC = "ttc_paniki";
-const HARDCODE_API_HOST = "http://127.0.0.1:8000";
+const API_HOST = "http://127.0.0.1:8000";
 
-function formatTanggalWaktu(ts) {
-  if (!ts) return "-";
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return ts;
-  return d.toLocaleString("id-ID");
+function getSiteConfig() {
+  const user = JSON.parse(sessionStorage.getItem("userinfo"));
+
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
+  return {
+    username: user.name,
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
 }
 
 function buildCandidates(apiHost, fileName) {
   if (!fileName || fileName === "-") return [];
   const clean = String(fileName).trim();
   if (!clean) return [];
+
   const base = apiHost.replace(/\/$/, "");
   const bust = `?t=${Date.now()}`;
+
   return [
     `${base}/storage/visitors/${clean}${bust}`,
     `${base}/storage/visitor/${clean}${bust}`,
@@ -36,14 +65,15 @@ function ImageWithFallback({ apiHost, fileName, alt }) {
 
   useEffect(() => setIdx(0), [fileName]);
 
-  if (!fileName || fileName === "-" || candidates.length === 0) return <span className="bt-muted">-</span>;
+  if (!fileName || fileName === "-" || candidates.length === 0) return <span>-</span>;
+
   const src = candidates[idx];
 
   return (
     <img
       src={src}
       alt={alt}
-      className="bt-img"
+      style={{ width: "70px", borderRadius: "2px" }}
       onError={() => {
         if (idx < candidates.length - 1) setIdx((p) => p + 1);
       }}
@@ -51,93 +81,11 @@ function ImageWithFallback({ apiHost, fileName, alt }) {
   );
 }
 
-function ModalInfo({ open, onClose, apiHost, tamu }) {
-  if (!open) return null;
-
-  const fotoMasukName = tamu?.dokumentasi_in || "";
-  const fotoKeluarName = tamu?.dokumentasi_out || "";
-  const signName = tamu?.signature || "";
-  const signatureUrl = signName
-    ? `${apiHost.replace(/\/$/, "")}/storage/signatures/${signName}?t=${Date.now()}`
-    : "";
-
-  return (
-    <div className="bt-modal-overlay" onClick={onClose}>
-      <div className="bt-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="bt-modal-head">
-          <div>
-            <div className="bt-modal-title">Info Buku Tamu</div>
-            <div className="bt-modal-sub">Detail tamu yang sudah selesai</div>
-          </div>
-          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>
-            Tutup
-          </button>
-        </div>
-
-        <div className="bt-modal-body">
-          <div className="row g-3">
-            <div className="col-lg-6">
-              <div className="bt-card">
-                <div className="bt-kv"><b>Nama</b><span>{tamu?.name || "-"}</span></div>
-                <div className="bt-kv"><b>Perusahaan</b><span>{tamu?.company || "-"}</span></div>
-                <div className="bt-kv"><b>Telepon</b><span>{tamu?.phone || "-"}</span></div>
-                <div className="bt-kv"><b>Jenis ID</b><span>{tamu?.id_type || "-"}</span></div>
-                <div className="bt-kv"><b>No ID</b><span>{tamu?.id_number || "-"}</span></div>
-                <div className="bt-kv"><b>Aktivitas</b><span>{tamu?.activity || "-"}</span></div>
-                <div className="bt-kv"><b>Ruang Kerja</b><span>{tamu?.ruang_kerja || "-"}</span></div>
-                <div className="bt-kv"><b>No VISIT / E-SIK</b><span>{tamu?.visit_id || "-"}</span></div>
-                <div className="bt-kv"><b>Status</b><span className="bt-pill bt-pill-done">{tamu?.status || "-"}</span></div>
-                <div className="bt-kv"><b>Dibuat</b><span>{formatTanggalWaktu(tamu?.created_at)}</span></div>
-                <div className="bt-kv"><b>Update</b><span>{formatTanggalWaktu(tamu?.updated_at)}</span></div>
-              </div>
-            </div>
-
-            <div className="col-lg-6">
-              <div className="bt-grid2">
-                <div className="bt-card">
-                  <div className="bt-card-title">Tanda Tangan</div>
-                  {signatureUrl ? (
-                    <img
-                      src={signatureUrl}
-                      alt="Tanda Tangan"
-                      className="bt-img"
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                  ) : (
-                    <div className="bt-muted">-</div>
-                  )}
-                </div>
-
-                <div className="bt-card">
-                  <div className="bt-card-title">Foto Masuk</div>
-                  <ImageWithFallback apiHost={apiHost} fileName={fotoMasukName} alt="Foto Masuk" />
-                  {!!fotoMasukName && <div className="bt-fn">{fotoMasukName}</div>}
-                </div>
-
-                <div className="bt-card">
-                  <div className="bt-card-title">Foto Keluar</div>
-                  <ImageWithFallback apiHost={apiHost} fileName={fotoKeluarName} alt="Foto Keluar" />
-                  {!!fotoKeluarName && <div className="bt-fn">{fotoKeluarName}</div>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bt-modal-foot">
-          <button className="btn btn-sm btn-outline-dark" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function BukuTamu() {
-  const username = HARDCODE_USERNAME;
-  const ttc = HARDCODE_TTC;
-  const apiHost = HARDCODE_API_HOST;
+  const SITE = getSiteConfig();
+  const username = SITE.username;
+  const ttc = SITE.ttc;
+  const apiHost = API_HOST;
 
   useEffect(() => {
     sessionStorage.setItem("username", username);
@@ -145,28 +93,21 @@ export default function BukuTamu() {
     sessionStorage.setItem("host", apiHost);
   }, [username, ttc, apiHost]);
 
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [mergedData, setMergedData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const [q, setQ] = useState("");
-  const [dateFrom, setDateFrom] = useState(""); // yyyy-mm-dd
-  const [dateTo, setDateTo] = useState("");     // yyyy-mm-dd
+  const [showPopup, setShowPopup] = useState(false);
+  const [selectedTamu, setSelectedTamu] = useState({});
 
-  const [selected, setSelected] = useState(null);
-  const [openInfo, setOpenInfo] = useState(false);
-
-  const listURL = useMemo(() => `${apiHost}/api/${ttc}/visitor`, [apiHost, ttc]);
-
-  const toast = (message, type = "success") => {
-    Swal.fire({
-      toast: true,
-      position: "top-end",
-      icon: type,
-      title: message,
-      showConfirmButton: false,
-      timer: 1800,
-      timerProgressBar: true,
-    });
+  const sampleData = {
+    nama: "Vinci Tampubolon",
+    alamat: "Tatelu, Jaga III, Dimembe",
+    telepon: "085240534296",
+    keperluan: "Kunjungan ke ruang server",
+    waktu: "2025-10-06 21:45",
+    note: "Diterima oleh Admin Jank.",
   };
 
   const safeReadJson = async (res) => {
@@ -178,193 +119,241 @@ export default function BukuTamu() {
     return res.json();
   };
 
-  const fetchDoneVisitors = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(listURL, { credentials: "include" });
-      const json = await safeReadJson(res);
-
-      if (!json?.success) {
-        setRows([]);
-        toast(json?.message || "Gagal ambil data", "error");
-        return;
-      }
-
-      const all = Array.isArray(json.data) ? json.data : [];
-
-      const done = all.filter((t) => {
-        const okStatus = String(t?.status || "").toLowerCase() === "selesai";
-        const hasIn = !!String(t?.dokumentasi_in || "").trim();
-        const hasOut = !!String(t?.dokumentasi_out || "").trim();
-        return okStatus && hasIn && hasOut;
-      });
-
-      done.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      setRows(done);
-    } catch (e) {
-      console.error(e);
-      setRows([]);
-      toast("API error / route tidak ada / bukan JSON", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchDoneVisitors();
-  }, [listURL]);
+    const fetchCompletedVisitors = async () => {
+      try {
+        const ttcFromSession = sessionStorage.getItem("ttc") || ttc;
+        const hostFromSession = sessionStorage.getItem("host") || apiHost;
 
-  const filtered = useMemo(() => {
-    const keyword = q.trim().toLowerCase();
+        const url = `${hostFromSession}/api/${ttcFromSession}/visitor/completed`;
 
-    const inRange = (createdAt) => {
-      if (!dateFrom && !dateTo) return true;
-      const d = new Date(createdAt);
-      if (Number.isNaN(d.getTime())) return true;
+        const res = await fetch(url, { credentials: "include" });
+        const json = await safeReadJson(res);
 
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      const ds = `${yyyy}-${mm}-${dd}`;
+        if (json.success) {
+          const data = (json.data || []).map((item) => {
+            const created = new Date(item.created_at);
+            const updated = new Date(item.updated_at);
 
-      if (dateFrom && ds < dateFrom) return false;
-      if (dateTo && ds > dateTo) return false;
-      return true;
+            return {
+              // tampilan tabel
+              hari: created.toLocaleDateString("id-ID", { weekday: "long" }),
+              tanggal: created.toLocaleDateString("id-ID"),
+              tanggalRaw: created,
+              nama: item.name,
+              instansi: item.company,
+              noTelp: item.phone,
+              aktivitas: item.activity,
+              jamMasuk: item.created_at,
+              dokumentasi_in: item.dokumentasi_in || "-",
+              jamKeluar: item.updated_at,
+              dokumentasi_out: item.dokumentasi_out || "-",
+              ruangKerja: item.ruang_kerja,
+              keterangan: item.visit_id,
+              status: item.status,
+              id_type: item.id_type,
+              id_number: item.id_number,
+              signature: item.signature || "-", 
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+            };
+          });
+
+          setMergedData(data);
+          setFilteredData(data);
+        } else {
+          console.error("Gagal ambil data:", json.message);
+        }
+      } catch (err) {
+        console.error("Error fetch:", err);
+      }
     };
 
-    return rows.filter((t) => {
-      const hit =
-        !keyword ||
-        String(t?.name || "").toLowerCase().includes(keyword) ||
-        String(t?.company || "").toLowerCase().includes(keyword) ||
-        String(t?.visit_id || "").toLowerCase().includes(keyword) ||
-        String(t?.phone || "").toLowerCase().includes(keyword) ||
-        String(t?.ruang_kerja || "").toLowerCase().includes(keyword) ||
-        String(t?.activity || "").toLowerCase().includes(keyword);
+    fetchCompletedVisitors();
+  }, [apiHost, ttc]);
 
-      return hit && inRange(t?.created_at);
+  const handleFilter = () => {
+    if (!startDate || !endDate) {
+      alert("Pilih tanggal awal dan akhir!");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const result = mergedData.filter((item) => item.tanggalRaw >= start && item.tanggalRaw <= end);
+    setFilteredData(result);
+  };
+
+  const exportToExcel = () => {
+    if (filteredData.length === 0) {
+      alert("Tidak ada data untuk diexport!");
+      return;
+    }
+
+    const dataToExport = filteredData.map((r) => ({
+      Hari: r.hari,
+      Tanggal: r.tanggal,
+      Nama: r.nama,
+      Perusahaan: r.instansi,
+      "Nomor Telepon": r.noTelp,
+      Aktivitas: r.aktivitas,
+      "Waktu Masuk": r.jamMasuk
+        ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+        : "-",
+      "Waktu Keluar": r.jamKeluar
+        ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+        : "-",
+      "Ruang Kerja": r.ruangKerja,
+      "No. VISIT/E SIK": r.keterangan,
+      Status: r.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "BukuTamu");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, `BukuTamu_${ttc}.xlsx`);
+  };
+
+  const openInfo = (r) => {
+    const fotoMasuk = r?.dokumentasi_in && r.dokumentasi_in !== "-" ? r.dokumentasi_in : "-";
+    const fotoKeluar = r?.dokumentasi_out && r.dokumentasi_out !== "-" ? r.dokumentasi_out : "-";
+    const signature = r?.signature && r.signature !== "-" ? r.signature : "-";
+
+    setSelectedTamu({
+      Nama: r?.nama,
+      Perusahaan: r?.instansi,
+      Telepon: r?.noTelp,
+      Aktivitas: r?.aktivitas,
+      "Ruang Kerja": r?.ruangKerja,
+      "No VISIT / E-SIK": r?.keterangan,
+      Status: r?.status,
+      "Jenis ID": r?.id_type,
+      "No ID": r?.id_number,
+      "Tanda Tangan": signature,
+      "Foto Masuk": fotoMasuk,
+      "Foto Keluar": fotoKeluar,
+      
+
+      "Dibuat Pada": r?.created_at,
+      "Diperbarui Pada": r?.updated_at,
     });
-  }, [rows, q, dateFrom, dateTo]);
 
-  const openDetail = (t) => {
-    setSelected(t);
-    setOpenInfo(true);
+    setShowPopup(true);
   };
 
   return (
-    <div className="bt-wrap">
-      <div className="bt-topbar">
-        <div>
-          <div className="bt-title">Buku Tamu</div>
-          <div className="bt-sub">
-            User: <b>{username}</b> • Host: <b>{apiHost}</b> • TTC: <b>{ttc}</b>
-          </div>
-        </div>
+    <div className="dashboard-container">
+      <div className="main-content">
+        <h3 className="security-title">Buku Tamu (Completed) - {SITE.label}</h3>
 
-        <div className="bt-actions">
-          <button className="btn btn-sm btn-outline-light bt-btn" onClick={fetchDoneVisitors} disabled={loading}>
-            <i className="bi bi-arrow-clockwise me-1"></i>
-            {loading ? "Loading..." : "Refresh"}
+        <div className="filter-container">
+          <div className="date-selector">
+            <label>Dari:</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+
+            <label>Sampai:</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+
+          <button className="btn btn-primary btn-sm" onClick={handleFilter}>
+            Filter
+          </button>
+
+          <button className="btn btn-secondary btn-sm" onClick={() => setFilteredData(mergedData)}>
+            Reset
+          </button>
+
+          <button className="btn btn-success btn-sm" onClick={exportToExcel}>
+            Export
           </button>
         </div>
-      </div>
 
-      <div className="bt-panel">
-        <div className="bt-filters">
-          <div className="bt-field">
-            <label>Cari</label>
-            <div className="bt-input">
-              <i className="bi bi-search"></i>
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Nama / perusahaan / VISIT / telp / ruang / aktivitas..."
-              />
-            </div>
-          </div>
-
-          <div className="bt-field">
-            <label>Dari</label>
-            <input className="bt-date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-
-          <div className="bt-field">
-            <label>Sampai</label>
-            <input className="bt-date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
-
-          <div className="bt-field bt-right">
-            <label>Total</label>
-            <div className="bt-total">{filtered.length}</div>
-          </div>
-        </div>
-
-        <div className="bt-tableWrap">
-          <table className="bt-table">
+        <section className="table-section" id="guest-list">
+          <table>
             <thead>
               <tr>
                 <th>Hari</th>
                 <th>Tanggal</th>
-                <th>Jam</th>
                 <th>Nama</th>
                 <th>Perusahaan</th>
-                <th>Telepon</th>
+                <th>Nomor Telepon</th>
                 <th>Aktivitas</th>
-                <th>Ruang</th>
-                <th>VISIT/E-SIK</th>
+                <th>Waktu Masuk</th>
+                <th>Foto Masuk</th>
+                <th>Waktu Keluar</th>
+                <th>Foto Keluar</th>
+                <th>Ruang Kerja</th>
+                <th>No. VISIT/E SIK</th>
                 <th>Status</th>
                 <th>Info</th>
               </tr>
             </thead>
 
             <tbody>
-              {filtered.length === 0 && !loading && (
+              {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="bt-empty">
-                    Data kosong / belum ada tamu selesai.
+                  <td colSpan="14" style={{ textAlign: "center" }}>
+                    Belum ada data tamu selesai
                   </td>
                 </tr>
-              )}
+              ) : (
+                filteredData.map((r, index) => (
+                  <tr key={index}>
+                    <td>{r.hari}</td>
+                    <td>{r.tanggal}</td>
+                    <td>{r.nama}</td>
+                    <td>{r.instansi}</td>
+                    <td>{r.noTelp}</td>
+                    <td>{r.aktivitas}</td>
 
-              {filtered.map((t) => {
-                const created = new Date(t.created_at);
-                const hari = created.toLocaleDateString("id-ID", { weekday: "long" });
-                const tanggal = created.toLocaleDateString("id-ID");
-                const jam = created.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                    <td>
+                      {r.jamMasuk
+                        ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                        : "-"}
+                    </td>
 
-                return (
-                  <tr key={t.id}>
-                    <td data-label="Hari">{hari}</td>
-                    <td data-label="Tanggal">{tanggal}</td>
-                    <td data-label="Jam">{jam}</td>
-                    <td data-label="Nama" className="bt-strong">{t.name}</td>
-                    <td data-label="Perusahaan">{t.company}</td>
-                    <td data-label="Telepon">{t.phone}</td>
-                    <td data-label="Aktivitas" className="bt-truncate" title={t.activity}>
-                      {t.activity}
+                    <td>
+                      <ImageWithFallback apiHost={apiHost} fileName={r.dokumentasi_in} alt="foto masuk" />
                     </td>
-                    <td data-label="Ruang">{t.ruang_kerja}</td>
-                    <td data-label="VISIT/E-SIK" className="bt-mono">{t.visit_id}</td>
-                    <td data-label="Status">
-                      <span className="bt-pill bt-pill-done">{t.status}</span>
+
+                    <td>
+                      {r.jamKeluar
+                        ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+                        : "-"}
                     </td>
-                    <td data-label="Info">
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => openDetail(t)} title="Lihat detail">
+
+                    <td>
+                      <ImageWithFallback apiHost={apiHost} fileName={r.dokumentasi_out} alt="foto keluar" />
+                    </td>
+
+                    <td>{r.ruangKerja}</td>
+                    <td>{r.keterangan}</td>
+                    <td>{r.status}</td>
+
+                    <td>
+                      <button className="btn btn-outline-info btn-sm" onClick={() => openInfo(r)} title="Lihat detail">
                         <i className="bi bi-info-circle"></i>
                       </button>
                     </td>
                   </tr>
-                );
-              })}
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-
-        
+        </section>
       </div>
 
-      <ModalInfo open={openInfo} onClose={() => setOpenInfo(false)} apiHost={apiHost} tamu={selected} />
+      <InfoTamu
+        open={showPopup}
+        onClose={() => setShowPopup(false)}
+        apiHost={apiHost}
+        data={Object.keys(selectedTamu || {}).length ? selectedTamu : sampleData}
+      />
     </div>
   );
 }

@@ -46,8 +46,8 @@ console.log(user.id);
   const handleUploadFoto = async (file, id, type) => {
     if (!file) return;
     const formData = new FormData();
-    if (type === "in") formData.append("dukumentasi_in", file);
-    else if (type === "out") formData.append("dukumentasi_out", file);
+    if (type === "in") formData.append("dokumentasi_in", file);
+    else if (type === "out") formData.append("dokumentasi_out", file);
     formData.append("status", type === "in" ? "approved" : "selesai");
 
     try {
@@ -69,7 +69,7 @@ console.log(user.id);
           setTamu((prev) =>
             prev.map((t) =>
               t.id === id
-                ? { ...t, status: "approved", dukumentasi_in: file.name }
+                ? { ...t, status: "approved", dokumentasi_in: file.name }
                 : t
             )
           );
@@ -200,11 +200,11 @@ console.log(user.id);
                     <button
                       className="btn btn-outline-info btn-sm me-1"
                       onClick={() => {
-                        const fotoMasuk = t.dukumentasi_in
-                          ? `${apiHost}/storage/visitors/${t.dukumentasi_in}`
+                        const fotoMasuk = t.dokumentasi_in
+                          ? `${apiHost}/storage/visitors/${t.dokumentasi_in}`
                           : "-";
-                        const fotoKeluar = t.dukumentasi_out
-                          ? `${apiHost}/storage/visitors/${t.dukumentasi_out}`
+                        const fotoKeluar = t.dokumentasi_out
+                          ? `${apiHost}/storage/visitors/${t.dokumentasi_out}`
                           : "-";
 
                         setSelectedTamu({
