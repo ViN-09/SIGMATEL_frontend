@@ -32,6 +32,8 @@ $q = mysqli_query($koneksi, "
     ttd_penerima,
     ttd_approval,
     bm_nama,
+    staff_ttd_approval,
+    staff_nama,
     approval_status
   FROM berita_acara
   WHERE id = $id

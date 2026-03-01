@@ -8,19 +8,18 @@ require "koneksi.php";
 $input = $_POST;
 
 
+// $id = intval($input['id'] ?? 0);
 $user_id = $input['user_id'] ?? '';
 $jabatan = $input['jabatan'] ?? '';
 $ttd_staff = $input['ttd_staff'] ?? '';
 $id_ba = $input['id_ba'] ?? 0;
-
-
+  
 if (!$user_id) {
   echo json_encode(["status"=>"error","message"=>"Data tidak valid"]);
   exit;
 }
 
 
-/* Ambil user */
 $qUser = mysqli_query($koneksi,"
   SELECT Nama, jabatan, ttd_staff
   FROM user_bio
@@ -35,30 +34,39 @@ if (!$qUser || mysqli_num_rows($qUser) === 0) {
   echo json_encode(["status"=>"error","message"=>"User tidak ditemukan"]);
   exit;
 }
+echo "qUser to data user Complite";
 
+// $user = mysqli_fetch_assoc($qUser);
 
-
-
-if ($data_user['jabatan'] !== 'BM') {
-  echo json_encode(["status"=>"error","message"=>"Hanya BM yang bisa approve"]);
+/* Pastikan bukan BM */
+if ($jabatan === 'BM') {
+  echo json_encode(["status"=>"error","message"=>"BM gunakan approve BM"]);
   exit;
 }
 
-/* Path TTD */
-// $ttd = '/ttd/' . $data_user['ttd_staff'];
-
-$ttd = $data_user['ttd_staff'];
-if (strpos($ttd, '/ttd/') === false) {
-  $ttd = '/ttd/' . $ttd;
+/* Pastikan TTD ada */
+if (empty($data_user['ttd_staff'])) {
+  echo json_encode(["status"=>"error","message"=>"TTD staff belum diupload"]);
+  exit;
 }
-/* Update */
-mysqli_query($koneksi,"
+echo "Kondisional Jabatan Komplit";
+
+/* Path */
+$ttd = '/ttd/' . $data_user['ttd_staff'];
+
+$update = mysqli_query($koneksi,"
   UPDATE berita_acara
   SET 
-    approval_status='approved',
-    ttd_approval='$ttd',
-    bm_nama='{$data_user['Nama']}'
+    staff_ttd_approval='$ttd',
+    staff_nama='{$data_user['Nama']}'
   WHERE id=$id_ba
 ");
 
-echo json_encode(["status"=>"success"]);
+echo "ttd Komplit";
+
+if ($update) {
+  echo json_encode(["status"=>"success"]);
+} else {
+  echo "LOLO";
+  echo json_encode(["status"=>"error","message"=>mysqli_error($koneksi)]);
+}

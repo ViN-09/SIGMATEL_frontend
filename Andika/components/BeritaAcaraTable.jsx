@@ -7,6 +7,30 @@ import jsPDF from "jspdf";
 export default function BeritaAcaraTable({ data }) {
   console.log(data);
 
+const TEST_MODE = true;
+
+const hardcodedUser = {
+  id: "	MND25094311054",
+  nama: "rizky walangdi",
+  jabatan: "ME" //
+};
+
+// const hardcodedUser = {
+//   id: "	MND22074311001",
+//   nama: "Djefli dalita",
+//   jabatan: "BM" //
+// };
+
+const user_id = TEST_MODE
+  ? hardcodedUser.id
+  : localStorage.getItem("user_id");
+
+const jabatan = `TEST_MODE`
+  ? hardcodedUser.jabatan
+  : localStorage.getItem("user_jabatan");
+
+  
+
   const [loading, setLoading] = useState(false);
 
   const getHari = (tanggal) => {
@@ -17,21 +41,22 @@ export default function BeritaAcaraTable({ data }) {
 
   /* ================= APPROVE ================= */
 const approveBerita = async (id) => {
-  
 
-  const user_id = localStorage.getItem("user_id");
-  const loginSite = "ttc_teling"; // sementara hardcode, bisa diambil dari user session nanti
- 
+  const payload = { user_id, id };
+
+  console.log("DATA DIKIRIM KE approve_berita.php:", payload);
+
   const res = await fetch(
     "http://localhost/BA_barang_in-out/api/approve_berita.php",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, user_id })
+      body: JSON.stringify(payload)
     }
   );
 
   const data = await res.json();
+  console.log("RESPONSE DARI SERVER:", data);
 
   if (data.status === "success") {
     Swal.fire("Berhasil", "Approved oleh BM", "success");
@@ -40,12 +65,13 @@ const approveBerita = async (id) => {
   }
 };
 const approveStaff = async (id) => {
+
   const res = await fetch(
-    "http://localhost/ttc_teling/BA_barang_in-out/api/approve_staff.php",
+    "http://localhost/BA_barang_in-out/api/approve_staff.php",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ user_id, id })
     }
   );
 
@@ -119,16 +145,26 @@ const buildPDFHTML = (d, page = 1) => {
 
     ${
       d.jenis === "MASUK"
-        ? `<img src="${d.ttd_penyerah}" height="70"/><br/>`
-        : `<img src="${d.staff_ttd_approval}" height="70"/><br/>`// ttd staff untuk jenis keluar, karena yang menyerahkan adalah staff site
-    }
-
-    ${
-      d.jenis === "MASUK"
-        ? `<u>${d.pihakA_nama}</u><br/>${d.pihakA_jabatan}`
-        : `<u>Staff Site</u>` // nama staff bisa ditampilkan jika sudah login dan data ttd_staff disimpan di database, untuk sementara kita tampilkan generic saja
+        ? `
+            <img src="${d.ttd_penyerah || ''}" height="70"/><br/>
+            <u>${d.pihakA_nama}</u><br/>
+            ${d.pihakA_jabatan}
+          `
+        : `
+            ${
+              d.staff_ttd_approval
+                ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // kalau sudah diapprove staff, tampilkan ttd staff
+                : `<button id="btn-approve-staff"
+                    style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
+                    Approve Staff
+                  </button>`
+            }
+            <br/>
+            <u>${d.staff_nama || 'Staff Site'}</u>
+          `
     }
   </div>
+
 
   <!-- PENERIMA -->
   <div style="text-align:center; width:30%">
@@ -136,16 +172,27 @@ const buildPDFHTML = (d, page = 1) => {
 
     ${
       d.jenis === "MASUK"
-        ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // ttd staff untuk jenis masuk, karena yang menerima adalah staff site
-        : `<img src="${d.ttd_penerima}" height="70"/><br/>` // untuk jenis keluar, yang menerima adalah pihak B (vendor/kontraktor) sehingga ttd nya diambil dari ttd_penerima
-    }
-
-    ${
-      d.jenis === "MASUK"
-        ? `<u>Staff Site</u>` // nama staff bisa ditampilkan jika sudah login dan data ttd_staff disimpan di database, untuk sementara kita tampilkan generic saja
-        : `<u>${d.pihakB_nama}</u><br/>${d.pihakB_jabatan}` // untuk jenis masuk, yang menerima adalah pihak B (vendor/kontraktor) sehingga namanya diambil dari pihakB_nama
+        ? `
+            ${
+              d.staff_ttd_approval
+                ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // ini untuk kasus masuk, yang menandatangani adalah staff
+                : `<button id="btn-approve-staff"
+                    style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
+                    Approve Staff
+                  </button>`
+            }
+            <br/>
+            <u>${d.staff_nama || 'Staff Site'}</u>
+          `
+        : `
+            <img src="${d.ttd_penerima || ''}" height="70"/><br/>
+            <u>${d.pihakB_nama}</u><br/>
+            ${d.pihakB_jabatan}
+          `
     }
   </div>
+
+</div>
 
 </div>
 
@@ -289,12 +336,13 @@ const showModal = (detail, page = 1) => {
       ${page === 1 ? '<button id="nextPage" class="swal2-confirm swal2-styled">Dokumentasi</button>' : ''}
       ${page === 2 ? '<button id="prevPage" class="swal2-confirm swal2-styled">Kembali</button>' : ''}
     `,
-    didOpen: () => {
+    _didOpen: () => {
       const next = document.getElementById("nextPage");
       const prev = document.getElementById("prevPage");
       const exportBtn = document.getElementById("btn-export");
       const approveBtn = document.getElementById("btn-approve");
-
+      const approveStaffBtn = document.getElementById("btn-approve-staff");
+      const jabatan = TEST_MODE ? hardcodedUser.jabatan : localStorage.getItem("user_jabatan");
       if (next) next.onclick = () => showModal(detail, 2);
       if (prev) prev.onclick = () => showModal(detail, 1);
 
@@ -302,15 +350,30 @@ const showModal = (detail, page = 1) => {
         exportBtn.onclick = () => exportPDF(detail);
       }
 
-       if (approveBtn) {
-          approveBtn.onclick = async () => {
-            await approveBerita(detail.id);
-            openDetail(detail.id); // reload modal
-          };
-        }
-    }
+      if (approveBtn && jabatan === "BM") {
+        approveBtn.onclick = async () => {
+          await approveBerita(detail.id);
+          openDetail(detail.id);
+        };
+      }
+
+      if (approveStaffBtn && jabatan !== "BM") {
+        approveStaffBtn.onclick = async () => {
+          await approveStaff(detail.id);
+          openDetail(detail.id);
+        };
+      }
+    },
+    get didOpen() {
+      return this._didOpen;
+    },
+    set didOpen(value) {
+      this._didOpen = value;
+    },
   });
 };
+
+
 
 
 
