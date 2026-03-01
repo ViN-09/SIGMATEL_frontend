@@ -47,10 +47,10 @@ const SITE = SITES[siteKey] || SITES.teling;
   const [notice, setNotice] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    sessionStorage.setItem("siteKey", "paniki");
+    sessionStorage.setItem("siteKey", siteKey);
     sessionStorage.setItem("host", SITE.host);
     sessionStorage.setItem("ttc", SITE.ttc);
-  }, []);
+  }, [siteKey, SITE.host, SITE.ttc]);
 
   const host = SITE.host;
   const ttc = SITE.ttc;
@@ -151,7 +151,9 @@ const SITE = SITES[siteKey] || SITES.teling;
       const data = await res.json();
 
       if (!res.ok) {
-        setNotice({ type: "error", text: `Gagal: ${data.message || "Server error"}` });
+        const msg = data?.message || "Server error";
+        const detail = data?.error ? ` (${data.error})` : "";
+        setNotice({ type: "error", text: `Gagal: ${msg}${detail}` });
         console.error("Server response error:", data);
         return;
       }

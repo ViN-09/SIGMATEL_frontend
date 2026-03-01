@@ -4,10 +4,44 @@ import "./landing.css";
 import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import InfoTamu from "./InfoTamu.jsx";
 
-const HARDCODE_USERNAME = "zeyn";
-const HARDCODE_TTC = "ttc_paniki";
-const HARDCODE_API_HOST = "http://127.0.0.1:8000";
+const API_HOST = "http://127.0.0.1:8000";
+
+function getSiteConfig() {
+  const user = JSON.parse(sessionStorage.getItem("userinfo"));
+
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
+  // fallback
+  return {
+    username: user.name,
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
+}
 
 function formatTanggalWaktu(ts) {
   if (!ts) return "-";
@@ -22,7 +56,6 @@ function buildCandidates(apiHost, fileName) {
   if (!clean) return [];
 
   const base = apiHost.replace(/\/$/, "");
- 
   const bust = `?t=${Date.now()}`;
 
   return [
@@ -47,7 +80,6 @@ function dataUrlToFile(dataUrl, filename = "capture.jpg") {
 
 function pickSavedFilename(json, type) {
   const key = type === "in" ? "dokumentasi_in" : "dokumentasi_out";
-
   const v =
     json?.data?.[key] ??
     json?.visitor?.[key] ??
@@ -56,7 +88,6 @@ function pickSavedFilename(json, type) {
 
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
-
 
 function ImageWithFallback({ apiHost, fileName, alt }) {
   const candidates = useMemo(() => buildCandidates(apiHost, fileName), [apiHost, fileName]);
@@ -81,104 +112,6 @@ function ImageWithFallback({ apiHost, fileName, alt }) {
         if (idx < candidates.length - 1) setIdx((p) => p + 1);
       }}
     />
-  );
-}
-
-function ModalInfo({ open, onClose, apiHost, tamu }) {
-  if (!open) return null;
-
-  const fotoMasukName = tamu?.dokumentasi_in || "";
-  const fotoKeluarName = tamu?.dokumentasi_out || "";
-  const signName = tamu?.signature || "";
-  const signatureUrl = signName ? `${apiHost.replace(/\/$/, "")}/storage/signatures/${signName}?t=${Date.now()}` : "";
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9998,
-        padding: 16,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 14,
-          width: "min(820px, 100%)",
-          maxHeight: "85vh",
-          overflow: "auto",
-          padding: 16,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="d-flex align-items-center mb-2">
-          <h5 className="mb-0">Info Tamu</h5>
-          <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
-            Tutup
-          </button>
-        </div>
-
-        <div style={{ fontSize: 14 }}>
-          <div className="row g-2">
-            <div className="col-md-6">
-              <div className="p-2 border rounded">
-                <div className="mb-2"><b>Nama</b>: {tamu?.name || "-"}</div>
-                <div className="mb-2"><b>Perusahaan</b>: {tamu?.company || "-"}</div>
-                <div className="mb-2"><b>Telepon</b>: {tamu?.phone || "-"}</div>
-                <div className="mb-2"><b>Jenis ID</b>: {tamu?.id_type || "-"}</div>
-                <div className="mb-2"><b>No ID</b>: {tamu?.id_number || "-"}</div>
-                <div className="mb-2"><b>Aktivitas</b>: {tamu?.activity || "-"}</div>
-                <div className="mb-2"><b>Ruang Kerja</b>: {tamu?.ruang_kerja || "-"}</div>
-                <div className="mb-2"><b>No VISIT / E-SIK</b>: {tamu?.visit_id || "-"}</div>
-                <div className="mb-2"><b>Status</b>: {tamu?.status || "-"}</div>
-                <div className="mb-2"><b>Dibuat</b>: {formatTanggalWaktu(tamu?.created_at)}</div>
-                <div className="mb-2"><b>Update</b>: {formatTanggalWaktu(tamu?.updated_at)}</div>
-              </div>
-            </div>
-
-            <div className="col-md-6">
-              <div className="p-2 border rounded mb-2">
-                <div className="mb-2"><b>Tanda Tangan</b></div>
-                {signatureUrl ? (
-                  <img
-                    src={signatureUrl}
-                    alt="Tanda Tangan"
-                    style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)" }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div>-</div>
-                )}
-              </div>
-
-              <div className="p-2 border rounded mb-2">
-                <div className="mb-2"><b>Foto Masuk</b></div>
-                <ImageWithFallback apiHost={apiHost} fileName={fotoMasukName} alt="Foto Masuk" />
-                {fotoMasukName ? (
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{fotoMasukName}</div>
-                ) : null}
-              </div>
-
-              <div className="p-2 border rounded">
-                <div className="mb-2"><b>Foto Keluar</b></div>
-                <ImageWithFallback apiHost={apiHost} fileName={fotoKeluarName} alt="Foto Keluar" />
-                {fotoKeluarName ? (
-                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>{fotoKeluarName}</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -294,9 +227,7 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
         <div className="d-flex align-items-center p-3 border-bottom">
           <div>
             <div style={{ fontWeight: 700 }}>{title || "Ambil Foto"}</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Kamera laptop & HP support (WebRTC). Kalau gagal, pakai Upload.
-            </div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}></div>
           </div>
           <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={onClose}>
             Tutup
@@ -383,20 +314,18 @@ function CameraModal({ open, onClose, onSubmitFile, title, facingMode = "environ
             )}
           </div>
 
-          <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}>
-            Tips: WebRTC kamera paling lancar di <b>https</b> atau <b>http://localhost</b>. Pastikan izin kamera aktif.
-          </div>
+          <div className="mt-2" style={{ fontSize: 12, opacity: 0.7 }}></div>
         </div>
       </div>
     </div>
   );
 }
 
-
 export default function Landingsec() {
-  const username = HARDCODE_USERNAME;
-  const ttc = HARDCODE_TTC;
-  const apiHost = HARDCODE_API_HOST;
+  const SITE = getSiteConfig();
+  const username = SITE.username;
+  const ttc = SITE.ttc;
+  const apiHost = API_HOST;
 
   useEffect(() => {
     sessionStorage.setItem("username", username);
@@ -415,9 +344,12 @@ export default function Landingsec() {
   const [tamu, setTamu] = useState([]);
   const [uploading, setUploading] = useState({});
   const [loading, setLoading] = useState(false);
+
   const [showPopup, setShowPopup] = useState(false);
-  const [selectedTamu, setSelectedTamu] = useState(null);
+  const [selectedTamu, setSelectedTamu] = useState({});
+
   const [cam, setCam] = useState({ open: false, id: null, type: "in" });
+
   const listURL = useMemo(() => `${apiHost}/api/${ttc}/visitor/waiting`, [apiHost, ttc]);
   const updateURL = useMemo(
     () => (id) => `${apiHost}/api/${ttc}/visitor/visitors/${id}/update-status`,
@@ -504,29 +436,20 @@ export default function Landingsec() {
       }
 
       const savedName = pickSavedFilename(json, type) || file.name;
+
       if (type === "in") {
         setTamu((prev) =>
-          prev.map((t) =>
-            t.id === id
-              ? { ...t, status: "approved", dokumentasi_in: savedName }
-              : t
-          )
+          prev.map((t) => (t.id === id ? { ...t, status: "approved", dokumentasi_in: savedName } : t))
         );
         setUploading((prev) => ({ ...prev, [id]: false }));
-        showToast("Approved + Foto Masuk tersimpan", "success");
+        showToast("Tamu Berhasil Approved", "success");
       }
 
       if (type === "out") {
-        setTamu((prev) =>
-          prev.map((t) =>
-            t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t
-          )
-        );
-
+        setTamu((prev) => prev.map((t) => (t.id === id ? { ...t, status: "selesai", dokumentasi_out: savedName } : t)));
         setTamu((prev) => prev.filter((t) => t.id !== id));
-
         setUploading((prev) => ({ ...prev, [id]: false }));
-        showToast("Selesai + Foto Keluar tersimpan", "success");
+        showToast("Tamu Out", "success");
       }
 
       await fetchTamu();
@@ -563,7 +486,27 @@ export default function Landingsec() {
   };
 
   const openInfo = (t) => {
-    setSelectedTamu(t);
+    const fotoMasuk = t?.dokumentasi_in ? `${apiHost}/storage/visitors/${t.dokumentasi_in}` : "-";
+    const fotoKeluar = t?.dokumentasi_out ? `${apiHost}/storage/visitors/${t.dokumentasi_out}` : "-";
+    const tandaTangan = t?.signature ? `${apiHost}/storage/signatures/${t.signature}` : "-";
+
+    setSelectedTamu({
+      Nama: t?.name,
+      Perusahaan: t?.company,
+      Telepon: t?.phone,
+      "Jenis ID": t?.id_type,
+      "No ID": t?.id_number,
+      Aktivitas: t?.activity,
+      "Ruang Kerja": t?.ruang_kerja,
+      "No VISIT / E-SIK": t?.visit_id,
+      Status: t?.status,
+      "Tanda Tangan": tandaTangan,
+      "Foto Masuk": fotoMasuk,
+      "Foto Keluar": fotoKeluar,
+      "Dibuat Pada": t?.created_at,
+      "Diperbarui Pada": t?.updated_at,
+    });
+
     setShowPopup(true);
   };
 
@@ -573,22 +516,11 @@ export default function Landingsec() {
   return (
     <div className="dashboard-container">
       <div className="main-content">
-        <div className="d-flex align-items-center mb-2">
-          <h3 className="security-title mb-0">Approval Tamu</h3>
-
-          <button
-            className="btn btn-sm btn-outline-primary ms-auto"
-            onClick={fetchTamu}
-            disabled={loading}
-            title="Refresh data"
-          >
-            <i className="bi bi-arrow-clockwise me-1"></i>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-
-        <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 12 }}>
-          User: <b>{username}</b> • Host: <b>{apiHost}</b> • TTC: <b>{ttc}</b>
+        <div className="d-flex align-items-center mb-3">
+          <h3 className="security-title mb-3" style={{ textAlign: "center", width: "100%" }}>
+            {" "}
+            Approval Tamu{" "}
+          </h3>
         </div>
 
         <section className="summary-section">
@@ -696,7 +628,7 @@ export default function Landingsec() {
         </section>
       </div>
 
-      <ModalInfo open={showPopup} onClose={() => setShowPopup(false)} apiHost={apiHost} tamu={selectedTamu} />
+      <InfoTamu open={showPopup} onClose={() => setShowPopup(false)} data={selectedTamu} />
 
       <CameraModal
         open={cam.open}

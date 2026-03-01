@@ -1,0 +1,154 @@
+/* InfoTamu.css */
+.it-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fadeIn 0.25s ease;
+}
+
+.it-modal {
+  width: 100%;
+  max-width: 600px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: all 0.25s ease;
+}
+
+.it-modal.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.it-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.it-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+  font-weight: 700;
+}
+
+.it-close {
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #888;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.it-close:hover {
+  background: #f3f3f3;
+  color: #000;
+}
+
+.it-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+.it-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.it-body::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+.it-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 6px 0;
+  border-bottom: 1px solid #f6f6f6;
+}
+
+.it-label {
+  min-width: 120px;
+  font-weight: 600;
+  color: #444;
+}
+
+.it-value {
+  flex: 1;
+  color: #222;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.it-value.it-note {
+  white-space: pre-wrap;
+}
+
+.it-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.it-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.it-btn-secondary {
+  background: #f3f3f3;
+  color: #333;
+}
+
+.it-btn-secondary:hover {
+  background: #e4e4e4;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* === Tambahan untuk gambar preview === */
+.it-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
