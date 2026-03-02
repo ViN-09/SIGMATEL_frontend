@@ -34,6 +34,7 @@ $q = mysqli_query($koneksi, "
     bm_nama,
     staff_ttd_approval,
     staff_nama,
+    site AS asal_staff,
     approval_status
   FROM berita_acara
   WHERE id = $id

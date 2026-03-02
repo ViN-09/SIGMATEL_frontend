@@ -9,17 +9,17 @@ export default function BeritaAcaraTable({ data }) {
 
 const TEST_MODE = true;
 
-const hardcodedUser = {
-  id: "	MND25094311054",
-  nama: "rizky walangdi",
-  jabatan: "ME" //
-};
-
 // const hardcodedUser = {
-//   id: "	MND22074311001",
-//   nama: "Djefli dalita",
-//   jabatan: "BM" //
+//   id: "MND25094311054",
+//   nama: "rizky walangdi",
+//   jabatan: "ME" //
 // };
+
+const hardcodedUser = {
+  id: "MND22074311001",
+  nama: "Djefli dalita",
+  jabatan: "BM" //
+};
 
 const user_id = TEST_MODE
   ? hardcodedUser.id
@@ -28,7 +28,8 @@ const user_id = TEST_MODE
 const jabatan = `TEST_MODE`
   ? hardcodedUser.jabatan
   : localStorage.getItem("user_jabatan");
-
+console.log("USER ID:", user_id);
+console.log("JABATAN:", jabatan);
   
 
   const [loading, setLoading] = useState(false);
@@ -39,54 +40,28 @@ const jabatan = `TEST_MODE`
     return hari[new Date(tanggal).getDay()];
   };
 
-  /* ================= APPROVE ================= */
-const approveBerita = async (id) => {
+const approve = async (id) => {
+  const payload = {
+    user_id: user_id,
+    id_ba: id   // id berita acara yang akan diapprove
+  };
 
-  const payload = { user_id, id };
-
-  console.log("DATA DIKIRIM KE approve_berita.php:", payload);
+  console.log("DATA DIKIRIM:", payload);
 
   const res = await fetch(
-    "http://localhost/BA_barang_in-out/api/approve_berita.php",
+    "http://localhost/BA_barang_in-out/api/approve.php",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }
   );
+  console.log(payload);
 
   const data = await res.json();
-  console.log("RESPONSE DARI SERVER:", data);
-
-  if (data.status === "success") {
-    Swal.fire("Berhasil", "Approved oleh BM", "success");
-  } else {
-    Swal.fire("Gagal", data.message, "error");
-  }
+  console.log("RESPONSE:", data);
 };
-const approveStaff = async (id) => {
-
-  const res = await fetch(
-    "http://localhost/BA_barang_in-out/api/approve_staff.php",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id, id })
-    }
-  );
-
-  const data = await res.json();
-
-  if (data.status === "success") {
-    Swal.fire("Berhasil", "Staff approve berhasil", "success");
-    window.location.reload();
-  } else {
-    Swal.fire("Gagal", data.message, "error");
-  }
-};
-
-
-
+  
 const [detailData, setDetailData] = useState(null);
 const [currentPage, setCurrentPage] = useState(1);
 const itemsPerPage = 4;
@@ -94,183 +69,179 @@ const itemsPerPage = 4;
   /* ================= BUILD PDF HTML ================= */
 const buildPDFHTML = (d, page = 1) => {
 
+  const isMasuk = d.jenis === "MASUK";
+  const isKeluar = d.jenis === "KELUAR";
+
+  const ttdTamu = isMasuk ? d.ttd_penyerah : d.ttd_penerima;
+  const ttdStaff = d.staff_ttd_approval;
+
+  const namaTamu = isMasuk ? d.pihakA_nama : d.pihakB_nama;
+  const jabatanTamu = isMasuk ? d.pihakA_jabatan : d.pihakB_jabatan;
+
+  const namaStaff = d.staff_nama || "Staff Site";
+
+
   if (page === 1) {
     return `
-  <div style="font-family:Inter; font-size:14px; color:#111">
+<div style="font-family:Inter; font-size:14px; color:#111">
 
-    <div style="display:flex; justify-content:space-between;">
-      <img src="/logo.png" height="50"/>
-      <img src="/Logo Kanan.png" height="50"/>
-    </div>
+  <div style="display:flex; justify-content:space-between;">
+    <img src="/logo.png" height="50"/>
+    <img src="/Logo Kanan.png" height="50"/>
+  </div>
 
-    <h2 style="text-align:center; margin:20px 0;">
-      BERITA ACARA SERAH TERIMA BARANG
-    </h2>
+  <h2 style="text-align:center; margin:20px 0;">
+    BERITA ACARA SERAH TERIMA BARANG
+  </h2>
 
   <p style="text-align:center">
     Pada Hari <b>${getHari(d.tanggal)}</b>, tanggal <b>${d.tanggal}</b><br/>
-    Dari <b>${d.pihakA_jabatan}</b> kepada <b>${d.pihakB_jabatan}</b><br/>
     Telah dilakukan serah terima barang berikut:
   </p>
-  
-    <table style="width:100%; border-collapse:collapse; margin-top:20px;">
-      <thead>
-        <tr>
-          <th style="border:1px solid #000; padding:8px">No</th>
-          <th style="border:1px solid #000; padding:8px">Nama</th>
-          <th style="border:1px solid #000; padding:8px">Jumlah</th>
-          <th style="border:1px solid #000; padding:8px">Tipe</th>
-          <th style="border:1px solid #000; padding:8px">S/N</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${
-          d.barang.map((b,i)=>`
-            <tr>
-              <td style="border:1px solid #000; padding:8px; text-align:center">${i+1}</td>
-              <td style="border:1px solid #000; padding:8px">${b.nama_barang}</td>
-              <td style="border:1px solid #000; padding:8px; text-align:center">${b.jumlah}</td>
-              <td style="border:1px solid #000; padding:8px">${b.tipe}</td>
-              <td style="border:1px solid #000; padding:8px">${b.sn}</td>
-            </tr>
-          `).join("")
-        }
-      </tbody>
-    </table>
-<div style="display:flex; justify-content:space-around; margin-top:50px">
 
-  <!-- PENYERAH -->
-  <div style="text-align:center; width:30%">
-    <b>Yang Menyerahkan</b><br/><br/>
+  <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+    <thead>
+      <tr>
+        <th style="border:1px solid #000; padding:8px">No</th>
+        <th style="border:1px solid #000; padding:8px">Nama</th>
+        <th style="border:1px solid #000; padding:8px">Jumlah</th>
+        <th style="border:1px solid #000; padding:8px">Tipe</th>
+        <th style="border:1px solid #000; padding:8px">S/N</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${
+        d.barang.map((b,i)=>`
+          <tr>
+            <td style="border:1px solid #000; padding:8px; text-align:center">${i+1}</td>
+            <td style="border:1px solid #000; padding:8px">${b.nama_barang}</td>
+            <td style="border:1px solid #000; padding:8px; text-align:center">${b.jumlah}</td>
+            <td style="border:1px solid #000; padding:8px">${b.tipe}</td>
+            <td style="border:1px solid #000; padding:8px">${b.sn}</td>
+          </tr>
+        `).join("")
+      }
+    </tbody>
+  </table>
 
-    ${
-      d.jenis === "MASUK"
-        ? `
-            <img src="${d.ttd_penyerah || ''}" height="70"/><br/>
-            <u>${d.pihakA_nama}</u><br/>
-            ${d.pihakA_jabatan}
-          `
-        : `
-            ${
-              d.staff_ttd_approval
-                ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // kalau sudah diapprove staff, tampilkan ttd staff
-                : `<button id="btn-approve-staff"
-                    style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
-                    Approve Staff
-                  </button>`
-            }
-            <br/>
-            <u>${d.staff_nama || 'Staff Site'}</u>
-          `
-    }
+  <div style="display:flex; justify-content:space-around; margin-top:60px">
+
+    <!-- PENYERAH -->
+    <div style="text-align:center; width:30%">
+      <b>Yang Menyerahkan</b><br/><br/>
+
+      ${
+        isMasuk
+          ? `
+              <img src="${ttdTamu || ''}" height="70"/><br/>
+              <u>${namaTamu}</u><br/>
+              ${jabatanTamu}
+            `
+          : `
+              ${
+                ttdStaff
+                  ? `<img src="${ttdStaff}" height="70"/><br/>`
+                  : `<button id="btn-approve-staff"
+                      style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
+                      Approve Staff
+                    </button>`
+              }
+              <br/>
+              <u>${namaStaff}</u><br/>
+              ${d.asal_staff || ""}
+            `
+      }
+    </div>
+
+    <!-- PENERIMA -->
+    <div style="text-align:center; width:30%">
+      <b>Yang Menerima</b><br/><br/>
+
+      ${
+        isMasuk
+          ? `
+              ${
+                ttdStaff
+                  ? `<img src="${ttdStaff}" height="70"/><br/>`
+                  : `<button id="btn-approve-staff"
+                      style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
+                      Approve Staff
+                    </button>`
+              }
+              <br/>
+              <u>${namaStaff}</u><br/>
+              ${d.asal_staff || ""}
+            `
+          : `
+              <img src="${ttdTamu || ''}" height="70"/><br/>
+              <u>${namaTamu}</u><br/>
+              ${jabatanTamu}
+            `
+      }
+    </div>
+
   </div>
 
-
-  <!-- PENERIMA -->
-  <div style="text-align:center; width:30%">
-    <b>Yang Menerima</b><br/><br/>
-
-    ${
-      d.jenis === "MASUK"
-        ? `
-            ${
-              d.staff_ttd_approval
-                ? `<img src="${d.staff_ttd_approval}" height="70"/><br/>` // ini untuk kasus masuk, yang menandatangani adalah staff
-                : `<button id="btn-approve-staff"
-                    style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer">
-                    Approve Staff
-                  </button>`
-            }
-            <br/>
-            <u>${d.staff_nama || 'Staff Site'}</u>
-          `
-        : `
-            <img src="${d.ttd_penerima || ''}" height="70"/><br/>
-            <u>${d.pihakB_nama}</u><br/>
-            ${d.pihakB_jabatan}
-          `
-    }
-  </div>
-
-</div>
-
-</div>
-
-          <!-- MENGETAHUI -->
-<div style="text-align:center; margin-top:40px">
-  <b>Mengetahui</b><br/><br/>
+  <!-- MENGETAHUI -->
+  <div style="text-align:center; margin-top:50px">
+    <b>Mengetahui</b><br/><br/>
 
     ${
       d.approval_status === "approved"
         ? `<img src="${d.ttd_approval}" height="80"/><br/>`
-        : `<button id="btn-approve"
-            style="padding:8px 16px; background:#28a745; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-            Approve
-          </button>`
+        : !ttdStaff
+          ? `<button
+                style="padding:8px 16px; background:#ccc; color:#666; border:none; border-radius:6px; cursor:not-allowed;"
+                disabled>
+                Menunggu Approve Staff
+             </button>`
+          : `<button id="btn-approve"
+                style="padding:8px 16px; background:#28a745; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+                Approve
+             </button>`
     }
 
-  <br/>
-  <u>${d.bm_nama}</u><br/> 
-  Building Manager 
-</div> 
+    <br/>
+    <u>${d.bm_nama || ""}</u><br/>
+    Building Manager
+  </div>
 
-    `;
+</div>
+`;
   }
 
-if (page === 2) {
-  return `
-    <div style="font-family:Inter; padding:20px">
-      <h2 style="text-align:center; margin-bottom:20px;">
-        DOKUMENTASI
-      </h2>
+  /* ===== PAGE 2 ===== */
+  if (page === 2) {
+    return `
+<div style="font-family:Inter; padding:20px">
+  <h2 style="text-align:center; margin-bottom:20px;">
+    DOKUMENTASI
+  </h2>
 
-      <div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:20px;
-      ">
-        ${
-          d.barang
-            .filter(b => b.foto)
-            .map(b => `
-              <div style="
-                border:1px solid #ccc;
-                padding:10px;
-                text-align:center;
-                border-radius:8px;
-              ">
-                <img 
-                  src="${b.foto}" 
-                  style="
-                    width:100%;
-                    height:220px;
-                    object-fit:cover;
-                    border-radius:6px;
-                  "
-                />
-                
-                <div style="
-                  margin-top:8px;
-                  font-weight:600;
-                ">
-                  ${b.nama_barang}
-                </div>
-
-                <div style="
-                  font-size:12px;
-                  color:#555;
-                ">
-                  Jumlah: ${b.jumlah} | Tipe: ${b.tipe}
-                </div>
-              </div>
-            `).join("")
-        }
-      </div>
-    </div>
-  `;
-}
-
-}
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    ${
+      d.barang
+        .filter(b => b.foto)
+        .map(b => `
+          <div style="border:1px solid #ccc; padding:10px; text-align:center; border-radius:8px;">
+            <img 
+              src="${b.foto}" 
+              style="width:100%; height:220px; object-fit:cover; border-radius:6px;"
+            />
+            <div style="margin-top:8px; font-weight:600;">
+              ${b.nama_barang}
+            </div>
+            <div style="font-size:12px; color:#555;">
+              Jumlah: ${b.jumlah} | Tipe: ${b.tipe}
+            </div>
+          </div>
+        `).join("")
+    }
+  </div>
+</div>
+`;
+  }
+};
 
 
   /* ================= EXPORT PDF ================= */
@@ -350,19 +321,17 @@ const showModal = (detail, page = 1) => {
         exportBtn.onclick = () => exportPDF(detail);
       }
 
-      if (approveBtn && jabatan === "BM") {
-        approveBtn.onclick = async () => {
-          await approveBerita(detail.id);
-          openDetail(detail.id);
-        };
-      }
+        if (approveBtn && jabatan === "BM") {
+          approveBtn.onclick = async () => {
+            await approve(detail.id);
+          };
+        }
 
-      if (approveStaffBtn && jabatan !== "BM") {
-        approveStaffBtn.onclick = async () => {
-          await approveStaff(detail.id);
-          openDetail(detail.id);
-        };
-      }
+        if (approveStaffBtn && jabatan !== "BM") {
+          approveStaffBtn.onclick = async () => {
+            await approve(detail.id);
+          };
+        }
     },
     get didOpen() {
       return this._didOpen;
@@ -390,36 +359,55 @@ const showModal = (detail, page = 1) => {
             <th>Tanggal</th>
             <th>Jenis</th>
             <th>Keterangan</th>
-            <th>Penyerah</th>
-            <th>Penerima</th>
+            <th>Tamu</th>
+            <th>Asal Tamu</th>
             <th>Dibuat Pada</th>
             <th>Status</th>
           </tr>
         </thead>
 
-        <tbody>
-          {data.map((row, i) => (
-            <tr
-              key={row.id}
-              className="clickable-row"
-              onClick={() => openDetail(row.id_berita)}
-            >
-              <td>{i+1}</td>
-              <td>{row.nomor}</td>
-              <td>{row.tanggal}</td>
-              <td>{row.jenis}</td>
-              <td>{row.keterangan}</td>
-              <td>{row.pihakA_nama}</td>
-              <td>{row.pihakB_nama}</td>
-              <td>{row.created_at}</td>
-              <td>
-              <span className={`badge ${row.approval_status}`}>
-                {row.approval_status === "approved" ? "Approved" : "Pending"}
-              </span>
-            </td>
-            </tr>
-          ))}
-        </tbody>
+<tbody>
+  {data.map((row, i) => {
+
+    const tamuNama =
+      row.jenis === "MASUK"
+        ? row.pihakA_nama
+        : row.pihakB_nama;
+
+    const tamuAsal =
+      row.jenis === "MASUK"
+        ? row.pihakA_jabatan
+        : row.pihakB_jabatan;
+
+    return (
+      <tr
+        key={row.id}
+        className="clickable-row"
+        onClick={() => openDetail(row.id_berita)}
+      >
+        <td>{i + 1}</td>
+        <td>{row.nomor}</td>
+        <td>{row.tanggal}</td>
+        <td>{row.jenis}</td>
+        <td>{row.keterangan}</td>
+
+        {/* TAMU */}
+        <td>{tamuNama}</td>
+          <td> {tamuAsal} </td>
+
+        <td>{row.created_at}</td>
+
+        <td>
+          <span className={`badge ${row.approval_status}`}>
+            {row.approval_status === "approved"
+              ? "Approved"
+              : "Pending"}
+          </span>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
       </table>
 
       {loading && <p>Loading...</p>}
