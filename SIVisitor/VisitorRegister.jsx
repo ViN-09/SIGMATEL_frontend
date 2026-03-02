@@ -2,19 +2,20 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./VisitorRegister.css";
+import { HOST } from "../../Auth/Property";
 
 const SITES = {
   teling: {
     label: "TTC Teling",
     ttc: "ttc_teling",
-    host: "127.0.0.1:8000",
+    host: HOST,
   },
   paniki: {
     label: "TTC Paniki",
     ttc: "ttc_paniki",
-    host: "127.0.0.1:8000",
+    host: HOST,
   },
-}; 
+};
 
 const getSiteFromURL = () => {
   const params = new URLSearchParams(window.location.search);
@@ -34,8 +35,8 @@ const INITIAL_FORM = {
 
 export default function VisitorRegister() {
   const siteKey = getSiteFromURL();
-const SITE = SITES[siteKey] || SITES.teling;
-  const navigate = useNavigate(); 
+  const SITE = SITES[siteKey] || SITES.teling;
+  const navigate = useNavigate();
   const canvasRef = useRef(null);
   const nameInputRef = useRef(null);
 
@@ -47,17 +48,17 @@ const SITE = SITES[siteKey] || SITES.teling;
   const [notice, setNotice] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    sessionStorage.setItem("siteKey", siteKey);
+    sessionStorage.setItem("siteKey", "paniki");
     sessionStorage.setItem("host", SITE.host);
     sessionStorage.setItem("ttc", SITE.ttc);
-  }, [siteKey, SITE.host, SITE.ttc]);
+  }, []);
 
   const host = SITE.host;
   const ttc = SITE.ttc;
 
   const endpoint = useMemo(() => {
     if (!host || !ttc) return "";
-    return `http://${host}/api/${ttc}/visitor/registry`;
+    return `${host}/api/${ttc}/visitor/registry`;
   }, [host, ttc]);
 
 
@@ -73,7 +74,7 @@ const SITE = SITES[siteKey] || SITES.teling;
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#000";
 
-   
+
     setTimeout(() => nameInputRef.current?.focus(), 0);
   }, []);
 
@@ -122,7 +123,7 @@ const SITE = SITES[siteKey] || SITES.teling;
   const resetForm = () => {
     setFormData(INITIAL_FORM);
     clearSignature();
- 
+
     setTimeout(() => nameInputRef.current?.focus(), 0);
   };
 
@@ -151,9 +152,7 @@ const SITE = SITES[siteKey] || SITES.teling;
       const data = await res.json();
 
       if (!res.ok) {
-        const msg = data?.message || "Server error";
-        const detail = data?.error ? ` (${data.error})` : "";
-        setNotice({ type: "error", text: `Gagal: ${msg}${detail}` });
+        setNotice({ type: "error", text: `Gagal: ${data.message || "Server error"}` });
         console.error("Server response error:", data);
         return;
       }
