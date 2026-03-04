@@ -16,9 +16,13 @@ export default function BukuTamu() {
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [q, setQ] = useState("");
+  const [searchBy, setSearchBy] = useState("all"); // ✅ tambah ini
+
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
   const [selected, setSelected] = useState(null);
   const [openInfo, setOpenInfo] = useState(false);
 
@@ -62,19 +66,32 @@ export default function BukuTamu() {
       return true;
     };
 
+    const val = (x) => String(x ?? "").toLowerCase();
+
     return rows.filter((t) => {
-      const hit =
+      const hitAll =
         !keyword ||
-        String(t?.name || "").toLowerCase().includes(keyword) ||
-        String(t?.company || "").toLowerCase().includes(keyword) ||
-        String(t?.visit_id || "").toLowerCase().includes(keyword) ||
-        String(t?.phone || "").toLowerCase().includes(keyword) ||
-        String(t?.ruang_kerja || "").toLowerCase().includes(keyword) ||
-        String(t?.activity || "").toLowerCase().includes(keyword);
+        val(t?.name).includes(keyword) ||
+        val(t?.company).includes(keyword) ||
+        val(t?.visit_id).includes(keyword) ||
+        val(t?.phone).includes(keyword) ||
+        val(t?.ruang_kerja).includes(keyword) ||
+        val(t?.activity).includes(keyword);
+
+      const hitOne =
+        !keyword ||
+        (searchBy === "name" && val(t?.name).includes(keyword)) ||
+        (searchBy === "company" && val(t?.company).includes(keyword)) ||
+        (searchBy === "visit_id" && val(t?.visit_id).includes(keyword)) ||
+        (searchBy === "phone" && val(t?.phone).includes(keyword)) ||
+        (searchBy === "ruang_kerja" && val(t?.ruang_kerja).includes(keyword)) ||
+        (searchBy === "activity" && val(t?.activity).includes(keyword));
+
+      const hit = searchBy === "all" ? hitAll : hitOne;
 
       return hit && inRange(t?.created_at);
     });
-  }, [rows, q, dateFrom, dateTo]);
+  }, [rows, q, dateFrom, dateTo, searchBy]);
 
   return (
     <div className="bt-wrap">
@@ -82,13 +99,30 @@ export default function BukuTamu() {
       <div className="bt-panel">
         <div className="bt-filters">
           <div className="bt-field">
+            <label>Filter Cari</label>
+            <select
+              className="bt-date"
+              value={searchBy}
+              onChange={(e) => setSearchBy(e.target.value)}
+            >
+              <option value="all">Semua</option>
+              <option value="name">Nama</option>
+              <option value="company">Perusahaan</option>
+              <option value="visit_id">VISIT/E-SIK</option>
+              <option value="phone">Telepon</option>
+              <option value="ruang_kerja">Ruang</option>
+              <option value="activity">Aktivitas</option>
+            </select>
+          </div>
+
+          <div className="bt-field">
             <label>Cari</label>
             <div className="bt-input">
               <i className="bi bi-search"></i>
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Nama / perusahaan / VISIT / telp / ruang / aktivitas..."
+                placeholder="Ketik kata kunci..."
               />
             </div>
           </div>
@@ -118,7 +152,7 @@ export default function BukuTamu() {
             <div className="bt-total">{filtered.length}</div>
           </div>
 
-          {/*Export Excel */}
+          {/* Export Excel */}
           <div className="bt-field bt-right">
             <label>Export</label>
             <button
@@ -164,25 +198,42 @@ export default function BukuTamu() {
                 const created = new Date(t.created_at);
                 const hari = created.toLocaleDateString("id-ID", { weekday: "long" });
                 const tanggal = created.toLocaleDateString("id-ID");
-                const jam = created.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                const jam = created.toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
                 return (
                   <tr key={t.id}>
                     <td data-label="Hari">{hari}</td>
                     <td data-label="Tanggal">{tanggal}</td>
                     <td data-label="Jam">{jam}</td>
-                    <td data-label="Nama" className="bt-strong">{t.name}</td>
+                    <td data-label="Nama" className="bt-strong">
+                      {t.name}
+                    </td>
                     <td data-label="Perusahaan">{t.company}</td>
                     <td data-label="Telepon">{t.phone}</td>
-                    <td data-label="Aktivitas" className="bt-truncate" title={t.activity}>{t.activity}</td>
+                    <td
+                      data-label="Aktivitas"
+                      className="bt-truncate"
+                      title={t.activity}
+                    >
+                      {t.activity}
+                    </td>
                     <td data-label="Ruang">{t.ruang_kerja}</td>
-                    <td data-label="VISIT/E-SIK" className="bt-mono">{t.visit_id}</td>
+                    <td data-label="VISIT/E-SIK" className="bt-mono">
+                      {t.visit_id}
+                    </td>
                     <td data-label="Status">
                       <span className="bt-pill bt-pill-done">{t.status}</span>
                     </td>
                     <td data-label="Info">
                       <button
                         className="btn btn-sm btn-outline-danger"
-                        onClick={() => { setSelected(t); setOpenInfo(true); }}
+                        onClick={() => {
+                          setSelected(t);
+                          setOpenInfo(true);
+                        }}
                         title="Lihat detail"
                       >
                         <i className="bi bi-info-circle"></i>
