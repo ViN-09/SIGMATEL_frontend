@@ -1,17 +1,26 @@
-import React, { useState } from "react";
-import "../styles/beritaAcara.css";
+import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import "../styles/beritaAcaraSelesai.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { getUser, HOST } from "../auth";
 
+/* ================= TEST MODE ================= */
 
-
-
-const user=getUser() // Kalau Mau Tes Role Ganti BM Atau ME
+const user=getUser()
 const host = HOST
 
 const TEST_MODE = true;
-export default function BeritaAcaraTable({ data }) {
-  console.log(data);
+
+
+export default function BeritaAcaraSelesai() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dari, setDari] = useState("");
+  const [sampai, setSampai] = useState("");
+  const [jenis, setJenis] = useState("");
 
 const user_id = TEST_MODE
   ? user.id
@@ -22,59 +31,80 @@ const jabatan = `TEST_MODE`
   : localStorage.getItem("user_jabatan");
 console.log("USER ID:", user_id);
 console.log("JABATAN:", jabatan);
-  
 
-   const [loading, setLoading] = useState(false);
-
+useEffect(() => {
+  loadData();
+}, [dari, sampai, jenis]);
+  /* ================= GET HARI ================= */
   const getHari = (tanggal) => {
-    if (!tanggal) return "";
-    const hari = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-    return hari[new Date(tanggal).getDay()];
+    const hari = new Date(tanggal).getDay();
+    const namaHari = [
+      "Minggu","Senin","Selasa","Rabu",
+      "Kamis","Jumat","Sabtu"
+    ];
+    return namaHari[hari];
   };
 
-/* ================= APPROVE ================= */
-const approve = async (id, detail) => {
+  /* ================= LOAD DATA ================= */
+const loadData = async () => {
   try {
-    const payload = {
-      user_id: user_id,
-      id_ba: id
-    };
+    setLoading(true);
 
-    const res = await fetch(
-      `${host}/approve.php`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }
-    );
+    let params = new URLSearchParams();
 
+    if (dari) params.append("dari", dari);
+    if (sampai) params.append("sampai", sampai);
+    if (jenis) params.append("jenis", jenis);
+
+    let url = `${host}/get_berita_selesai.php`;
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const res = await fetch(url);
     const json = await res.json();
 
     if (json.status === "success") {
-      await Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Berhasil approve",
-        timer: 1500,
-        showConfirmButton: false
-      });
-
-      // 🔄 Reload table
-      loadData();
-
+      setData(json.data);
     } else {
       Swal.fire("Error", json.message, "error");
     }
   } catch (err) {
-    Swal.fire("Error", "Gagal approve", "error");
+    Swal.fire("Error", "Gagal mengambil data", "error");
+  } finally {
+    setLoading(false);
   }
 };
+  /* ================= APPROVE ================= */
+  const approve = async (id) => {
+    try {
+      const payload = {
+        user_id: user_id,
+        id_ba: id
+      };
 
-  
-const [detailData, setDetailData] = useState(null);
-const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 4;
+      const res = await fetch(
+        `${host}/approve.php`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const json = await res.json();
+
+      if (json.status === "success") {
+        Swal.fire("Success", "Berhasil approve", "success");
+        loadData();
+      } else {
+        Swal.fire("Error", json.message, "error");
+      }
+    } catch (err) {
+      Swal.fire("Error", "Gagal approve", "error");
+    }
+  };
 
   /* ================= BUILD PDF HTML ================= */
 const buildPDFHTML = (d, page = 1) => {
@@ -290,7 +320,7 @@ const openDetail = async (id) => {
   setLoading(true);
 
   const res = await fetch(
-     `${host}/get_berita_acara_detail.php?id=${id}`
+    `${host}/get_berita_acara_detail.php?id=${id}`
   );
 
   const json = await res.json();
@@ -333,13 +363,13 @@ const showModal = (detail, page = 1) => {
 
         if (approveBtn && jabatan === "BM") {
           approveBtn.onclick = async () => {
-            await approve(detail.id, detail);
+            await approve(detail.id);
           };
         }
 
         if (approveStaffBtn && jabatan !== "BM") {
           approveStaffBtn.onclick = async () => {
-            await approve(detail.id, detail);
+            await approve(detail.id);
           };
         }
     },
@@ -352,30 +382,113 @@ const showModal = (detail, page = 1) => {
   });
 };
 
-  /* ================= TABLE ================= */
-  return (
+  /* ================= EXPORT EXCEL ================= */
+  const exportExcel = () => {
+    if (data.length === 0) {
+      Swal.fire("Tidak ada data");
+      return;
+    }
 
-     <div className="table-wrapper">
-    <div className="ba-page">
-<div className="ba-container">
+    const exportData = data.map((row) => ({
+      Nomor: row.nomor,
+      Tanggal: row.tanggal,
+      Jenis: row.jenis,
+      Staff: row.staff_nama,
+      Status: row.approval_status
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Berita Acara ");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array"
+    });
+
+    const blob = new Blob([excelBuffer], {
+      type: "application/octet-stream"
+    });
+
+    saveAs(blob, `BA_Selesai.xlsx`);
+  };
+
+  /* ================= RENDER ================= */
+return (
   <div className="table-wrapper">
-    <div className="table-scroll">
+    <div className="ba-page">
+  <h2 className="ba-tittle">Berita Acara Selesai</h2>
+
+{/* ===== FILTER SECTION ===== */}
+<div className="ba-filter-wrapper">
+  <div className="ba-filter-left">
+    <label>Dari:</label>
+    <input
+      type="date"
+      value={dari}
+      onChange={(e) => setDari(e.target.value)}
+    />
+
+      <label>Sampai:</label>
+      <input
+        type="date"
+        value={sampai}
+        onChange={(e) => setSampai(e.target.value)}
+      />
+
+  
+    <label>Jenis:</label>
+    <select
+      value={jenis}
+      onChange={(e) => setJenis(e.target.value)}
+    >
+      <option value="">Semua</option>
+      <option value="MASUK">MASUK</option>
+      <option value="KELUAR">KELUAR</option>
+    </select>
+   </div> 
+
+  <div className="ba-filter-left">
+    <button className="btn-filter" onClick={loadData}>
+      Filter
+    </button>
+
+    <button
+      className="btn-reset"
+      onClick={() => {
+        setDari("");
+        setSampai("");
+        setJenis("");
+        loadData();
+      }}
+    >
+      Reset
+    </button>
+
+    <button className="btn-export" onClick={exportExcel}>
+      Export
+    </button>
+  </div>
+</div>
+</div>
       <table className="ba-table">
         <thead>
           <tr>
             <th>No</th>
-            <th>Tanggal</th>
-            <th>Jenis Berita Acara </th>
+            <th>Nomor</th>
+            <th>Nama Barang</th>
             <th>Keterangan</th>
-            <th>Tamu</th>
+            <th>Tanggal</th>
+            <th>Jenis</th>
+            <th>Nama Tamu</th>
             <th>Asal Tamu</th>
+            <th>Staff</th>
             <th>Status</th>
           </tr>
         </thead>
 
 <tbody>
   {data.map((row, i) => {
-
     const tamuNama =
       row.jenis === "MASUK"
         ? row.pihakA_nama
@@ -387,28 +500,35 @@ const showModal = (detail, page = 1) => {
         : row.pihakB_jabatan;
 
     return (
-        <tr
-          key={row.id_berita}
-          className="ba-row"
-          onClick={() => openDetail(row.id_berita)}
-        >
-          <td data-label="No">{i + 1}</td>
-          <td data-label="Tanggal">{row.tanggal}</td>
-          <td data-label="Jenis">{row.jenis}</td>
-          <td data-label="Keterangan" className="wrap">{row.keterangan}</td>
-
-          {/* TAMU */}
-          <td data-label="Nama Tamu">{tamuNama}</td>
-          <td data-label="Asal Tamu">{tamuAsal}</td>
-
-          <td data-label="Status">
-            <span className={`badge ${row.approval_status}`}>
-              {row.approval_status === "approved"
-                ? "Approved"
-                : "Pending"}
-            </span>
-          </td>
-        </tr>
+      <tr
+        key={row.id}
+        className="clickable-row"
+        onClick={() => openDetail(row.id_berita || row.id)}
+      >
+        <td>{i + 1}</td>
+        <td>{row.nomor}</td>
+        <td>
+          {JSON.parse(row.barang).map((b, i) => (
+            <div key={i} style={{ marginBottom: "8px" }}>
+              <div><b>{i + 1}. {b.nama}</b></div>
+              <div style={{ fontStyle: "italic" }}>
+                JUMLAH: {b.jumlah}
+              </div>
+            </div>
+          ))}
+        </td>
+        <td>{row.keterangan}</td>
+        <td>{row.tanggal}</td>
+        <td>{row.jenis}</td>
+        <td>{tamuNama}</td>
+        <td>{tamuAsal}</td>
+        <td>{row.staff_nama}</td>
+        <td>
+          <span className={`badge ${row.approval_status}`}>
+            {row.approval_status}
+          </span>
+        </td>
+      </tr>
     );
   })}
 </tbody>
@@ -416,11 +536,5 @@ const showModal = (detail, page = 1) => {
 
       {loading && <p>Loading...</p>}
     </div>
-    </div>
-    </div>
-    </div>
-    </div>
-
   );
 }
-

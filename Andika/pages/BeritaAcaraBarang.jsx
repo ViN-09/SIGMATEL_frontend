@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import SignatureCanvas from "react-signature-canvas";
+import { HOST } from "../auth";
+
+
 
 
 export default function BeritaAcaraBarang() {
 
 //   const host = 'http://192.168.1.10';
-//  const host = 'http://localhost'
+const host = HOST
 
   // ====== Inject Minimalist CSS ======
   useEffect(() => {
@@ -277,7 +280,7 @@ td {
 const getNomorOtomatis = async () => {
   try {
     const res = await fetch(
-      "http://localhost/BA_barang_in-out/api/get_next_nomor_ba.php"
+      `${host}/get_next_nomor_ba.php`
     );
 
     const data = await res.json();
@@ -370,7 +373,7 @@ if (form.jenis === "KELUAR" && !ttdPenerima) {
   try {
     // 1️⃣ Simpan header
     const user_id = localStorage.getItem("user_id") || 1; // sementara hardcode user_id, nanti bisa diambil dari session/login
-    const resHeader = await fetch("http://localhost/BA_barang_in-out/api/save_berita.php", {
+    const resHeader = await fetch(`${host}/save_berita.php`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -416,7 +419,7 @@ if (form.jenis === "KELUAR" && !ttdPenerima) {
       });
     }
 
-    await fetch("http://localhost/BA_barang_in-out/api/save_barang.php", {
+    await fetch(`${host}/save_barang.php`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -476,7 +479,7 @@ const uploadFoto = async (file) => {
   const fd = new FormData();
   fd.append("foto", file);
 
-  const res = await fetch("http://localhost/BA_barang_in-out/api/upload_foto_barang.php", {
+  const res = await fetch(`${host}/upload_foto_barang.php`, {
     method: "POST",
     body: fd
   });

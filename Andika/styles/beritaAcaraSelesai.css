@@ -1,13 +1,9 @@
-
 .ba-tittle  {
   text-align: center;
   font-size: 30px;
   font-weight: 700;
   margin-bottom: 18px;
 }
-
-
-
 /* ================= BASE CONTAINER ================= */
 .ba-container {
   padding: 20px;
@@ -51,7 +47,7 @@
 /* ================= TABLE ================= */
 .ba-table {
   border-collapse: collapse;
-  min-width: 1300px; 
+  min-width: 1300px; /* penting supaya bisa swipe */
   width: 100%;
 }
 
@@ -80,7 +76,7 @@
   color: #1f2937;
   text-align: center;
   border-bottom: 1px solid #f1f1f1;
-  white-space: nowrap; 
+  white-space: nowrap; /* supaya tidak turun */
   transition: background 0.2s ease;
 }
 
@@ -152,4 +148,78 @@
     font-size: 12px;
   }
 
+}
+
+/* ===== FILTER WRAPPER ===== */
+.ba-filter-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  background: #f8fafc;
+  padding: 15px 20px;
+  border-radius: 12px;
+}
+
+/* LEFT SIDE (DATE INPUTS) */
+.ba-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ba-filter-left label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ba-filter-left input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+/* RIGHT SIDE (BUTTONS) */
+.ba-filter-right {
+  display: flex;
+  gap: 10px;
+}
+
+/* BUTTON BASE */
+.ba-filter-right button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* FILTER BUTTON */
+.btn-filter {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-filter:hover {
+  background: #1d4ed8;
+}
+
+/* RESET BUTTON */
+.btn-reset {
+  background: #6b7280;
+  color: #fff;
+}
+
+.btn-reset:hover {
+  background: #4b5563;
+}
+
+/* EXPORT BUTTON */
+.btn-export {
+  background: #16a34a;
+  color: #fff;
+}
+
+.btn-export:hover {
+  background: #15803d;
 }
