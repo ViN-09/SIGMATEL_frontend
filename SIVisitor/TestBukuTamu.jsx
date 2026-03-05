@@ -11,15 +11,16 @@ import { exportBukuTamuXLSX } from "./exportExcel";
 export default function BukuTamu() {
   const ttc = getSITE();
   const apiHost = HOST;
-  const user = getUSER('teling');
-  console.log("user", user)
+  const user = getUSER("teling");
+  console.log("user", user);
   const username = user.id;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [qInput, setQInput] = useState("")
   const [q, setQ] = useState("");
-  const [searchBy, setSearchBy] = useState("all"); // ✅ tambah ini
+  const [searchBy, setSearchBy] = useState("all");
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -50,6 +51,18 @@ export default function BukuTamu() {
   useEffect(() => {
     loadVisitors();
   }, [ttc]);
+
+  const handleSearch = () => {
+    setQ(qInput);
+  };
+
+  const handleReset = () => {
+    setQInput("");
+    setQ("");
+    setSearchBy("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
@@ -121,10 +134,33 @@ export default function BukuTamu() {
             <div className="bt-input">
               <i className="bi bi-search"></i>
               <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
                 placeholder="Ketik kata kunci..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
               />
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary ms-2"
+                onClick={handleSearch}
+                disabled={loading}
+                title="Cari"
+              >
+                Cari
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary ms-2"
+                onClick={handleReset}
+                disabled={loading && rows.length === 0}
+                title="Reset"
+              >
+                Reset
+              </button>
             </div>
           </div>
 
@@ -197,7 +233,9 @@ export default function BukuTamu() {
 
               {filtered.map((t) => {
                 const created = new Date(t.created_at);
-                const hari = created.toLocaleDateString("id-ID", { weekday: "long" });
+                const hari = created.toLocaleDateString("id-ID", {
+                  weekday: "long",
+                });
                 const tanggal = created.toLocaleDateString("id-ID");
                 const jam = created.toLocaleTimeString("id-ID", {
                   hour: "2-digit",
