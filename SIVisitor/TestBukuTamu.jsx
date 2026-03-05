@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import ModalInfo from "./ModalInfo";
-import { fetchDoneVisitors } from "./Visitor";
+import { fetchDoneVisitors } from "./TestVisitor";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -18,7 +18,7 @@ export default function BukuTamu() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [qInput, setQInput] = useState("")
+  const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [searchBy, setSearchBy] = useState("all");
 
@@ -40,28 +40,48 @@ export default function BukuTamu() {
     });
   };
 
-  const loadVisitors = async () => {
+  const loadVisitors = async (filters = null) => {
     setLoading(true);
-    const data = await fetchDoneVisitors(ttc);
+
+    const data = await fetchDoneVisitors(
+      filters
+        ? {
+            q: filters.q ?? "",
+            searchBy: filters.searchBy ?? "all",
+            dateFrom: filters.dateFrom ?? "",
+            dateTo: filters.dateTo ?? "",
+            all: 1,
+          }
+        : {}
+    );
+
     setRows(data);
     if (!data.length) toast("Tidak ada tamu selesai", "info");
     setLoading(false);
+    return data;
   };
 
   useEffect(() => {
     loadVisitors();
   }, [ttc]);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
+    await loadVisitors({
+      q: qInput,
+      searchBy,
+      dateFrom,
+      dateTo,
+    });
     setQ(qInput);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setQInput("");
     setQ("");
     setSearchBy("all");
     setDateFrom("");
     setDateTo("");
+    await loadVisitors();
   };
 
   const filtered = useMemo(() => {
@@ -129,6 +149,7 @@ export default function BukuTamu() {
             </select>
           </div>
 
+          {/* tombol Cari & Reset */}
           <div className="bt-field">
             <label>Cari</label>
             <div className="bt-input">
@@ -156,7 +177,7 @@ export default function BukuTamu() {
                 type="button"
                 className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={handleReset}
-                disabled={loading && rows.length === 0}
+                disabled={loading}
                 title="Reset"
               >
                 Reset
@@ -233,9 +254,7 @@ export default function BukuTamu() {
 
               {filtered.map((t) => {
                 const created = new Date(t.created_at);
-                const hari = created.toLocaleDateString("id-ID", {
-                  weekday: "long",
-                });
+                const hari = created.toLocaleDateString("id-ID", { weekday: "long" });
                 const tanggal = created.toLocaleDateString("id-ID");
                 const jam = created.toLocaleTimeString("id-ID", {
                   hour: "2-digit",
@@ -252,11 +271,7 @@ export default function BukuTamu() {
                     </td>
                     <td data-label="Perusahaan">{t.company}</td>
                     <td data-label="Telepon">{t.phone}</td>
-                    <td
-                      data-label="Aktivitas"
-                      className="bt-truncate"
-                      title={t.activity}
-                    >
+                    <td data-label="Aktivitas" className="bt-truncate" title={t.activity}>
                       {t.activity}
                     </td>
                     <td data-label="Ruang">{t.ruang_kerja}</td>
