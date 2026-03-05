@@ -1,60 +1,68 @@
-import { HOST, getSITE, getUSER } from "../auth";
+import { HOST } from "../../Auth/Property";
 
-export async function fetchDoneVisitors(filters = {}) {
-  const user = getUSER();
+async function safeReadJson(res) {
+  const ct = res.headers.get("content-type") || "";
+
+  if (!ct.includes("application/json")) {
+    const text = await res.text();
+    throw new Error(
+      `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
+    );
+  }
+
+  return res.json();
+}
+
+export async function fetchDoneVisitors(ttc) {
+  const safeTtc = String(ttc || "").trim();
   const apiHost = HOST;
-  const ttc = getSITE();
 
-  const params = new URLSearchParams();
-  if (filters?.q) params.set("q", String(filters.q));
-  if (filters?.searchBy) params.set("searchBy", String(filters.searchBy));
-  if (filters?.dateFrom) params.set("dateFrom", String(filters.dateFrom));
-  if (filters?.dateTo) params.set("dateTo", String(filters.dateTo));
+  if (!safeTtc) {
+    console.error("fetchDoneVisitors: ttc kosong");
+    return [];
+  }
 
-  if (filters?.all) params.set("all", "1");
-
-  const qs = params.toString();
-  const listURL = `${apiHost}/api/${ttc}/visitor/visitors/completed${qs ? `?${qs}` : ""}`;
-
-  const safeReadJson = async (res) => {
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) {
-      const text = await res.text();
-      throw new Error(
-        `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
-      );
-    }
-    return res.json();
-  };
+  const url = `${apiHost}/api/${safeTtc}/visitor/completed`;
 
   try {
-    const res = await fetch(listURL, { credentials: "include" });
-    const json = await safeReadJson(res);
-    if (!json?.success) throw new Error(json?.message || "Gagal ambil data");
+    console.log("fetchDoneVisitors HOST:", apiHost);
+    console.log("fetchDoneVisitors TTC:", safeTtc);
+    console.log("fetchDoneVisitors URL:", url);
 
-    const all = Array.isArray(json.data) ? json.data : [];
-    const done = all.filter((t) => {
-      const okStatus = String(t?.status || "").toLowerCase() === "selesai";
-      const hasIn = !!String(t?.dokumentasi_in || "").trim();
-      const hasOut = !!String(t?.dokumentasi_out || "").trim();
-      return okStatus && hasIn && hasOut;
+    const res = await fetch(url, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
     });
 
-    done.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const json = await safeReadJson(res);
+    console.log("fetchDoneVisitors response:", json);
 
-    return done;
+    if (json?.success) {
+      const data = Array.isArray(json.data) ? json.data : [];
+
+      data.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return data;
+    }
+
+    console.error("Gagal ambil data:", json?.message || "Unknown error");
+    return [];
   } catch (err) {
     console.error("fetchDoneVisitors error:", err);
     return [];
   }
 }
 
-export async function updateStatusVisitor(id, type, file, userID) {
+export async function updateStatusVisitor(id, type, file, userID, ttc) {
+  const safeTtc = String(ttc || "").trim();
   const apiHost = HOST;
-  const ttc = getSITE();
-  const updateURL = `${apiHost}/api/${ttc}/visitor/visitors/${id}/update-status`;
+  const updateURL = `${apiHost}/api/${safeTtc}/visitor/visitors/${id}/update-status`;
 
   const formData = new FormData();
   if (type === "in") formData.append("dokumentasi_in", file);
@@ -69,34 +77,39 @@ export async function updateStatusVisitor(id, type, file, userID) {
     method: "POST",
     body: formData,
     credentials: "include",
-    headers: { userid: String(userID) },
+    headers: {
+      userid: String(userID),
+      Accept: "application/json",
+    },
   });
 
   return res.json();
 }
 
-export async function fetchTamu() {
+export async function fetchTamu(ttc) {
+  const safeTtc = String(ttc || "").trim();
   const apiHost = HOST;
-  const ttc = getSITE();
-  const listURL = `${apiHost}/api/${ttc}/visitor/waiting`;
-
-  const safeReadJson = async (res) => {
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) {
-      const text = await res.text();
-      throw new Error(
-        `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
-      );
-    }
-    return res.json();
-  };
+  const listURL = `${apiHost}/api/${safeTtc}/visitor/waiting`;
 
   try {
-    const res = await fetch(listURL, { credentials: "include" });
+    console.log("fetchTamu HOST:", apiHost);
+    console.log("fetchTamu TTC:", safeTtc);
+    console.log("fetchTamu URL:", listURL);
+
+    const res = await fetch(listURL, {
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
     const json = await safeReadJson(res);
 
-    if (json.success) return json.data || [];
-    throw new Error(json.message || "Gagal ambil data");
+    if (json?.success) {
+      return Array.isArray(json.data) ? json.data : [];
+    }
+
+    throw new Error(json?.message || "Gagal ambil data");
   } catch (err) {
     console.error("fetchTamu error:", err);
     return [];

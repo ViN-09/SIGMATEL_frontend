@@ -1,19 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import ModalInfo from "./ModalInfo";
-import { fetchDoneVisitors } from "./TestVisitor";
+import { fetchDoneVisitors } from "./Visitor";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { getSITE, HOST, getUSER } from "../auth";
-import { exportBukuTamuXLSX } from "./exportExcel";
+import { getSITE, HOST, getUserInfo } from "../../Auth/Property";
+
+function getSiteLabel(ttc) {
+  if (ttc === "ttc_teling") return "TTC Teling";
+  if (ttc === "ttc_paniki") return "TTC Paniki";
+  return ttc || "Unknown Site";
+}
 
 export default function BukuTamu() {
   const ttc = getSITE();
   const apiHost = HOST;
-  const user = getUSER("teling");
-  console.log("user", user);
-  const username = user.id;
+  const user = getUserInfo();
+  const username = user?.name || user?.id || "unknown";
+  const siteLabel = getSiteLabel(ttc);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,80 +45,69 @@ export default function BukuTamu() {
     });
   };
 
-  const loadVisitors = async (filters = null) => {
+  const loadVisitors = async () => {
     setLoading(true);
+    try {
+      console.log("BukuTamu getSITE():", ttc);
+      console.log("BukuTamu HOST:", apiHost);
+      console.log("BukuTamu user:", user);
 
-    const data = await fetchDoneVisitors(
-      filters
-        ? {
-            q: filters.q ?? "",
-            searchBy: filters.searchBy ?? "all",
-            dateFrom: filters.dateFrom ?? "",
-            dateTo: filters.dateTo ?? "",
-            all: 1,
-          }
-        : {}
-    );
+      const data = await fetchDoneVisitors(ttc);
+      console.log("BukuTamu fetched rows:", data);
 
-    setRows(data);
-    if (!data.length) toast("Tidak ada tamu selesai", "info");
-    setLoading(false);
-    return data;
+      setRows(Array.isArray(data) ? data : []);
+
+      if (!data || data.length === 0) {
+        toast("Tidak ada tamu selesai", "info");
+      }
+    } catch (err) {
+      console.error("loadVisitors error:", err);
+      setRows([]);
+      toast("Gagal memuat data tamu selesai", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    if (!ttc) return;
     loadVisitors();
   }, [ttc]);
-
-  const handleSearch = async () => {
-    await loadVisitors({
-      q: qInput,
-      searchBy,
-      dateFrom,
-      dateTo,
-    });
-    setQ(qInput);
-  };
-
-  const handleReset = async () => {
-    setQInput("");
-    setQ("");
-    setSearchBy("all");
-    setDateFrom("");
-    setDateTo("");
-    await loadVisitors();
-  };
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
 
     const inRange = (createdAt) => {
       if (!dateFrom && !dateTo) return true;
+
       const d = new Date(createdAt);
       if (Number.isNaN(d.getTime())) return true;
+
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const dd = String(d.getDate()).padStart(2, "0");
       const ds = `${yyyy}-${mm}-${dd}`;
+
       if (dateFrom && ds < dateFrom) return false;
       if (dateTo && ds > dateTo) return false;
+
       return true;
     };
 
     const val = (x) => String(x ?? "").toLowerCase();
 
     return rows.filter((t) => {
-      const hitAll =
+      const hit =
         !keyword ||
-        val(t?.name).includes(keyword) ||
-        val(t?.company).includes(keyword) ||
-        val(t?.visit_id).includes(keyword) ||
-        val(t?.phone).includes(keyword) ||
-        val(t?.ruang_kerja).includes(keyword) ||
-        val(t?.activity).includes(keyword);
-
-      const hitOne =
-        !keyword ||
+        (searchBy === "all" &&
+          (
+            val(t?.name).includes(keyword) ||
+            val(t?.company).includes(keyword) ||
+            val(t?.visit_id).includes(keyword) ||
+            val(t?.phone).includes(keyword) ||
+            val(t?.ruang_kerja).includes(keyword) ||
+            val(t?.activity).includes(keyword)
+          )) ||
         (searchBy === "name" && val(t?.name).includes(keyword)) ||
         (searchBy === "company" && val(t?.company).includes(keyword)) ||
         (searchBy === "visit_id" && val(t?.visit_id).includes(keyword)) ||
@@ -121,16 +115,33 @@ export default function BukuTamu() {
         (searchBy === "ruang_kerja" && val(t?.ruang_kerja).includes(keyword)) ||
         (searchBy === "activity" && val(t?.activity).includes(keyword));
 
-      const hit = searchBy === "all" ? hitAll : hitOne;
-
       return hit && inRange(t?.created_at);
     });
-  }, [rows, q, dateFrom, dateTo, searchBy]);
+  }, [rows, q, searchBy, dateFrom, dateTo]);
+
+  const handleSearch = () => {
+    setQ(qInput);
+  };
+
+  const handleReset = () => {
+    setQInput("");
+    setQ("");
+    setSearchBy("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   return (
     <div className="bt-wrap">
-      {/* Filters */}
       <div className="bt-panel">
+        <h3 className="security-title mb-3">Buku Tamu (Completed) - {siteLabel}</h3>
+
+        {/* optional debug info
+        <div className="mb-2" style={{ fontSize: 12, opacity: 0.75 }}>
+          User: <b>{username}</b> | Host: <b>{apiHost}</b> | TTC: <b>{ttc}</b>
+        </div>
+        */}
+
         <div className="bt-filters">
           <div className="bt-field">
             <label>Filter Cari</label>
@@ -149,7 +160,6 @@ export default function BukuTamu() {
             </select>
           </div>
 
-          {/* tombol Cari & Reset */}
           <div className="bt-field">
             <label>Cari</label>
             <div className="bt-input">
@@ -162,7 +172,6 @@ export default function BukuTamu() {
                   if (e.key === "Enter") handleSearch();
                 }}
               />
-
               <button
                 type="button"
                 className="btn btn-sm btn-outline-primary ms-2"
@@ -172,7 +181,6 @@ export default function BukuTamu() {
               >
                 Cari
               </button>
-
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary ms-2"
@@ -209,23 +217,8 @@ export default function BukuTamu() {
             <label>Total</label>
             <div className="bt-total">{filtered.length}</div>
           </div>
-
-          {/* Export Excel */}
-          <div className="bt-field bt-right">
-            <label>Export</label>
-            <button
-              className="btn btn-sm btn-outline-success"
-              onClick={() => exportBukuTamuXLSX(filtered, toast)}
-              disabled={loading || filtered.length === 0}
-              title="Export data yang sudah terfilter"
-            >
-              <i className="bi bi-file-earmark-excel me-1"></i>
-              Export Excel
-            </button>
-          </div>
         </div>
 
-        {/* Table */}
         <div className="bt-tableWrap">
           <table className="bt-table">
             <thead>
@@ -243,59 +236,78 @@ export default function BukuTamu() {
                 <th>Info</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.length === 0 && !loading && (
+              {loading ? (
+                <tr>
+                  <td colSpan={11} className="bt-empty">
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="bt-empty">
                     Data kosong / belum ada tamu selesai.
                   </td>
                 </tr>
-              )}
+              ) : (
+                filtered.map((t) => {
+                  const created = new Date(t.created_at);
+                  const hari = Number.isNaN(created.getTime())
+                    ? "-"
+                    : created.toLocaleDateString("id-ID", { weekday: "long" });
+                  const tanggal = Number.isNaN(created.getTime())
+                    ? "-"
+                    : created.toLocaleDateString("id-ID");
+                  const jam = Number.isNaN(created.getTime())
+                    ? "-"
+                    : created.toLocaleTimeString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
 
-              {filtered.map((t) => {
-                const created = new Date(t.created_at);
-                const hari = created.toLocaleDateString("id-ID", { weekday: "long" });
-                const tanggal = created.toLocaleDateString("id-ID");
-                const jam = created.toLocaleTimeString("id-ID", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-
-                return (
-                  <tr key={t.id}>
-                    <td data-label="Hari">{hari}</td>
-                    <td data-label="Tanggal">{tanggal}</td>
-                    <td data-label="Jam">{jam}</td>
-                    <td data-label="Nama" className="bt-strong">
-                      {t.name}
-                    </td>
-                    <td data-label="Perusahaan">{t.company}</td>
-                    <td data-label="Telepon">{t.phone}</td>
-                    <td data-label="Aktivitas" className="bt-truncate" title={t.activity}>
-                      {t.activity}
-                    </td>
-                    <td data-label="Ruang">{t.ruang_kerja}</td>
-                    <td data-label="VISIT/E-SIK" className="bt-mono">
-                      {t.visit_id}
-                    </td>
-                    <td data-label="Status">
-                      <span className="bt-pill bt-pill-done">{t.status}</span>
-                    </td>
-                    <td data-label="Info">
-                      <button
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => {
-                          setSelected(t);
-                          setOpenInfo(true);
-                        }}
-                        title="Lihat detail"
+                  return (
+                    <tr key={t.id}>
+                      <td data-label="Hari">{hari}</td>
+                      <td data-label="Tanggal">{tanggal}</td>
+                      <td data-label="Jam">{jam}</td>
+                      <td data-label="Nama" className="bt-strong">
+                        {t.name || "-"}
+                      </td>
+                      <td data-label="Perusahaan">{t.company || "-"}</td>
+                      <td data-label="Telepon">{t.phone || "-"}</td>
+                      <td
+                        data-label="Aktivitas"
+                        className="bt-truncate"
+                        title={t.activity || "-"}
                       >
-                        <i className="bi bi-info-circle"></i>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                        {t.activity || "-"}
+                      </td>
+                      <td data-label="Ruang">{t.ruang_kerja || "-"}</td>
+                      <td data-label="VISIT/E-SIK" className="bt-mono">
+                        {t.visit_id || "-"}
+                      </td>
+                      <td data-label="Status">
+                        <span className="bt-pill bt-pill-done">
+                          {t.status || "-"}
+                        </span>
+                      </td>
+                      <td data-label="Info">
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => {
+                            setSelected(t);
+                            setOpenInfo(true);
+                          }}
+                          title="Lihat detail"
+                        >
+                          <i className="bi bi-info-circle"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
