@@ -5,6 +5,8 @@ import { fetchDoneVisitors } from "./Visitor";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import { getSITE, HOST, getUserInfo } from "../../Auth/Property";
 
 function getSiteLabel(ttc) {
@@ -131,16 +133,58 @@ export default function BukuTamu() {
     setDateTo("");
   };
 
+  const exportToExcel = () => {
+    if (filtered.length === 0) {
+      toast("Tidak ada data untuk diexport!", "info");
+      return;
+    }
+
+    const dataToExport = filtered.map((t) => {
+      const created = new Date(t.created_at);
+      return {
+        Hari: Number.isNaN(created.getTime())
+          ? "-"
+          : created.toLocaleDateString("id-ID", { weekday: "long" }),
+        Tanggal: Number.isNaN(created.getTime())
+          ? "-"
+          : created.toLocaleDateString("id-ID"),
+        Jam: Number.isNaN(created.getTime())
+          ? "-"
+          : created.toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+        Nama: t.name || "-",
+        Perusahaan: t.company || "-",
+        Telepon: t.phone || "-",
+        Aktivitas: t.activity || "-",
+        Ruang: t.ruang_kerja || "-",
+        "VISIT/E-SIK": t.visit_id || "-",
+        Status: t.status || "-",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "BukuTamu");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const blob = new Blob([excelBuffer], {
+      type: "application/octet-stream",
+    });
+
+    saveAs(blob, `BukuTamu_${ttc}.xlsx`);
+    toast("Export Excel berhasil", "success");
+  };
+
   return (
     <div className="bt-wrap">
       <div className="bt-panel">
         <h3 className="security-title mb-3">Buku Tamu (Completed) - {siteLabel}</h3>
-
-        {/* optional debug info
-        <div className="mb-2" style={{ fontSize: 12, opacity: 0.75 }}>
-          User: <b>{username}</b> | Host: <b>{apiHost}</b> | TTC: <b>{ttc}</b>
-        </div>
-        */}
 
         <div className="bt-filters">
           <div className="bt-field">
@@ -216,6 +260,19 @@ export default function BukuTamu() {
           <div className="bt-field bt-right">
             <label>Total</label>
             <div className="bt-total">{filtered.length}</div>
+          </div>
+
+          <div className="bt-field bt-right">
+            <label>Export</label>
+            <button
+              className="btn btn-sm btn-outline-success"
+              onClick={exportToExcel}
+              disabled={loading || filtered.length === 0}
+              title="Export Excel"
+            >
+              <i className="bi bi-file-earmark-excel me-1"></i>
+              Export Excel
+            </button>
           </div>
         </div>
 
