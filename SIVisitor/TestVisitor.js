@@ -1,36 +1,45 @@
-import { HOST } from "../../Auth/Property";
+const API_HOST = "http://127.0.0.1:8000";
+
+function getSiteConfig() {
+  const raw = sessionStorage.getItem("userinfo");
+  let user = null;
+
+  try {
+    user = raw ? JSON.parse(raw) : null;
+  } catch {
+    user = null;
+  }
+
+  // tes paniki cess
+  return {
+    username: user?.name || "unknown",
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
+}
 
 async function safeReadJson(res) {
   const ct = res.headers.get("content-type") || "";
-
   if (!ct.includes("application/json")) {
     const text = await res.text();
     throw new Error(
       `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
     );
   }
-
   return res.json();
 }
 
-export async function fetchDoneVisitors(ttc) {
-  const safeTtc = String(ttc || "").trim();
-  const apiHost = HOST;
-
-  if (!safeTtc) {
-    console.error("fetchDoneVisitors: ttc kosong");
-    return [];
-  }
-
-  const url = `${apiHost}/api/${safeTtc}/visitor/completed`;
+export async function fetchDoneVisitorsRaw() {
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const url = `${API_HOST}/api/${ttc}/visitor/completed`;
 
   try {
-    console.log("fetchDoneVisitors HOST:", apiHost);
-    console.log("fetchDoneVisitors TTC:", safeTtc);
-    console.log("fetchDoneVisitors URL:", url);
+    console.log("fetchDoneVisitorsRaw SITE:", SITE);
+    console.log("fetchDoneVisitorsRaw URL:", url);
+    console.log("session userinfo:", sessionStorage.getItem("userinfo"));
 
     const res = await fetch(url, {
-      method: "GET",
       credentials: "include",
       headers: {
         Accept: "application/json",
@@ -38,40 +47,29 @@ export async function fetchDoneVisitors(ttc) {
     });
 
     const json = await safeReadJson(res);
-    console.log("fetchDoneVisitors response:", json);
+    console.log("fetchDoneVisitorsRaw response:", json);
 
-    if (json?.success) {
-      const data = Array.isArray(json.data) ? json.data : [];
-
-      data.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      return data;
+    if (json.success) {
+      return Array.isArray(json.data) ? json.data : [];
     }
 
-    console.error("Gagal ambil data:", json?.message || "Unknown error");
+    console.error("Gagal ambil data:", json.message);
     return [];
   } catch (err) {
-    console.error("fetchDoneVisitors error:", err);
+    console.error("fetchDoneVisitorsRaw error:", err);
     return [];
   }
 }
 
-export async function updateStatusVisitor(id, type, file, userID, ttc) {
-  const safeTtc = String(ttc || "").trim();
-  const apiHost = HOST;
-  const updateURL = `${apiHost}/api/${safeTtc}/visitor/visitors/${id}/update-status`;
+export async function updateStatusVisitor(id, type, file, userID) {
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const updateURL = `${API_HOST}/api/${ttc}/visitor/visitors/${id}/update-status`;
 
   const formData = new FormData();
   if (type === "in") formData.append("dokumentasi_in", file);
   if (type === "out") formData.append("dokumentasi_out", file);
-
-  formData.append(
-    "status",
-    type === "in" ? "approved" : type === "out" ? "selesai" : "rejected"
-  );
+  formData.append("status", type === "in" ? "approved" : "selesai");
 
   const res = await fetch(updateURL, {
     method: "POST",
@@ -86,14 +84,13 @@ export async function updateStatusVisitor(id, type, file, userID, ttc) {
   return res.json();
 }
 
-export async function fetchTamu(ttc) {
-  const safeTtc = String(ttc || "").trim();
-  const apiHost = HOST;
-  const listURL = `${apiHost}/api/${safeTtc}/visitor/waiting`;
+export async function fetchTamu() {
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const listURL = `${API_HOST}/api/${ttc}/visitor/waiting`;
 
   try {
-    console.log("fetchTamu HOST:", apiHost);
-    console.log("fetchTamu TTC:", safeTtc);
+    console.log("fetchTamu SITE:", SITE);
     console.log("fetchTamu URL:", listURL);
 
     const res = await fetch(listURL, {
@@ -106,7 +103,7 @@ export async function fetchTamu(ttc) {
     const json = await safeReadJson(res);
 
     if (json?.success) {
-      return Array.isArray(json.data) ? json.data : [];
+      return json.data || [];
     }
 
     throw new Error(json?.message || "Gagal ambil data");

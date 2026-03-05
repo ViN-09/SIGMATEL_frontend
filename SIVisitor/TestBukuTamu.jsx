@@ -1,147 +1,226 @@
-import { useEffect, useMemo, useState } from "react";
-import Swal from "sweetalert2";
-import ModalInfo from "./ModalInfo";
-import { fetchDoneVisitors } from "./Visitor";
+import { useEffect, useState } from "react";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { getSITE, HOST, getUserInfo } from "../../Auth/Property";
-import { exportBukuTamuXLSX } from "./exportExcel";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import ModalInfo from "./ModalInfo";
+import { fetchDoneVisitorsRaw } from "./TestVisitor";
 
-function getSiteLabel(ttc) {
-  if (ttc === "ttc_teling") return "TTC Teling";
-  if (ttc === "ttc_paniki") return "TTC Paniki";
-  return ttc || "Unknown Site";
+const API_HOST = "http://127.0.0.1:8000";
+
+function getSiteConfig() {
+  const raw = sessionStorage.getItem("userinfo");
+  let user = null;
+
+  try {
+    user = raw ? JSON.parse(raw) : null;
+  } catch {
+    user = null;
+  }
+
+  // test data paniki cesss
+  return {
+    username: user?.name || "unknown",
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
 }
 
 export default function BukuTamu() {
-  const ttc = getSITE();
-  const apiHost = HOST;
-  const user = getUserInfo();
-  const username = user?.name || user?.id || "unknown";
-  const siteLabel = getSiteLabel(ttc);
-
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const [qInput, setQInput] = useState("");
-  const [q, setQ] = useState("");
-  const [searchBy, setSearchBy] = useState("all");
-
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-
-  const [selected, setSelected] = useState(null);
-  const [openInfo, setOpenInfo] = useState(false);
-
-  const toast = (message, type = "success") => {
-    Swal.fire({
-      toast: true,
-      position: "top-end",
-      icon: type,
-      title: message,
-      showConfirmButton: false,
-      timer: 1800,
-      timerProgressBar: true,
-    });
-  };
-
-  const loadVisitors = async () => {
-    setLoading(true);
-    try {
-      console.log("BukuTamu getSITE():", ttc);
-      console.log("BukuTamu HOST:", apiHost);
-      console.log("BukuTamu user:", user);
-
-      const data = await fetchDoneVisitors(ttc);
-      console.log("BukuTamu fetched rows:", data);
-
-      setRows(Array.isArray(data) ? data : []);
-
-      if (!data || data.length === 0) {
-        toast("Tidak ada tamu selesai", "info");
-      }
-    } catch (err) {
-      console.error("loadVisitors error:", err);
-      setRows([]);
-      toast("Gagal memuat data tamu selesai", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const SITE = getSiteConfig();
+  const username = SITE.username;
+  const ttc = SITE.ttc;
+  const apiHost = API_HOST;
 
   useEffect(() => {
-    if (!ttc) return;
-    loadVisitors();
-  }, [ttc]);
+    sessionStorage.setItem("username", username);
+    sessionStorage.setItem("ttc", ttc);
+    sessionStorage.setItem("host", apiHost);
+  }, [username, ttc, apiHost]);
 
-  const filtered = useMemo(() => {
-    const keyword = q.trim().toLowerCase();
+  const [mergedData, setMergedData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [searchBy, setSearchBy] = useState("all");
+  const [loading, setLoading] = useState(false);
 
-    const inRange = (createdAt) => {
-      if (!dateFrom && !dateTo) return true;
+  const [showPopup, setShowPopup] = useState(false);
+  const [selectedTamu, setSelectedTamu] = useState(null);
 
-      const d = new Date(createdAt);
-      if (Number.isNaN(d.getTime())) return true;
+  useEffect(() => {
+    const loadCompletedVisitors = async () => {
+      setLoading(true);
+      try {
+        console.log("BukuTamu SITE:", SITE);
 
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      const ds = `${yyyy}-${mm}-${dd}`;
+        const rawData = await fetchDoneVisitorsRaw();
+        console.log("BukuTamu rawData:", rawData);
 
-      if (dateFrom && ds < dateFrom) return false;
-      if (dateTo && ds > dateTo) return false;
+        const data = (rawData || []).map((item) => {
+          const created = new Date(item.created_at);
+          const updated = new Date(item.updated_at);
 
-      return true;
+          return {
+            id: item.id,
+            hari: Number.isNaN(created.getTime())
+              ? "-"
+              : created.toLocaleDateString("id-ID", { weekday: "long" }),
+            tanggal: Number.isNaN(created.getTime())
+              ? "-"
+              : created.toLocaleDateString("id-ID"),
+            tanggalRaw: created,
+            nama: item.name || "-",
+            instansi: item.company || "-",
+            noTelp: item.phone || "-",
+            aktivitas: item.activity || "-",
+            jamMasuk: item.created_at || "",
+            dokumentasi_in: item.dokumentasi_in || "-",
+            jamKeluar: item.updated_at || "",
+            dokumentasi_out: item.dokumentasi_out || "-",
+            ruangKerja: item.ruang_kerja || "-",
+            keterangan: item.visit_id || "-",
+            status: item.status || "-",
+            id_type: item.id_type || "-",
+            id_number: item.id_number || "-",
+            signature: item.signature || "-",
+            created_at: item.created_at || "",
+            updated_at: item.updated_at || "",
+            raw: item,
+          };
+        });
+
+        console.log("BukuTamu mapped data:", data);
+
+        setMergedData(data);
+        setFilteredData(data);
+      } catch (err) {
+        console.error("Error fetch completed visitors:", err);
+        setMergedData([]);
+        setFilteredData([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const val = (x) => String(x ?? "").toLowerCase();
+    loadCompletedVisitors();
+  }, [apiHost, ttc]);
 
-    return rows.filter((t) => {
-      const hit =
-        !keyword ||
-        (searchBy === "all" &&
-          (
-            val(t?.name).includes(keyword) ||
-            val(t?.company).includes(keyword) ||
-            val(t?.visit_id).includes(keyword) ||
-            val(t?.phone).includes(keyword) ||
-            val(t?.ruang_kerja).includes(keyword) ||
-            val(t?.activity).includes(keyword)
-          )) ||
-        (searchBy === "name" && val(t?.name).includes(keyword)) ||
-        (searchBy === "company" && val(t?.company).includes(keyword)) ||
-        (searchBy === "visit_id" && val(t?.visit_id).includes(keyword)) ||
-        (searchBy === "phone" && val(t?.phone).includes(keyword)) ||
-        (searchBy === "ruang_kerja" && val(t?.ruang_kerja).includes(keyword)) ||
-        (searchBy === "activity" && val(t?.activity).includes(keyword));
+  const handleFilter = () => {
+    let result = [...mergedData];
 
-      return hit && inRange(t?.created_at);
-    });
-  }, [rows, q, searchBy, dateFrom, dateTo]);
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
 
-  const handleSearch = () => {
-    setQ(qInput);
+      result = result.filter((item) => {
+        if (!(item.tanggalRaw instanceof Date) || Number.isNaN(item.tanggalRaw.getTime())) {
+          return false;
+        }
+        return item.tanggalRaw >= start && item.tanggalRaw <= end;
+      });
+    }
+
+    const key = keyword.trim().toLowerCase();
+
+    if (key) {
+      result = result.filter((item) => {
+        const nama = String(item.nama || "").toLowerCase();
+        const instansi = String(item.instansi || "").toLowerCase();
+        const noTelp = String(item.noTelp || "").toLowerCase();
+        const aktivitas = String(item.aktivitas || "").toLowerCase();
+        const ruangKerja = String(item.ruangKerja || "").toLowerCase();
+        const keterangan = String(item.keterangan || "").toLowerCase();
+
+        if (searchBy === "nama") return nama.includes(key);
+        if (searchBy === "instansi") return instansi.includes(key);
+        if (searchBy === "telepon") return noTelp.includes(key);
+        if (searchBy === "aktivitas") return aktivitas.includes(key);
+        if (searchBy === "ruang") return ruangKerja.includes(key);
+        if (searchBy === "visit") return keterangan.includes(key);
+
+        return (
+          nama.includes(key) ||
+          instansi.includes(key) ||
+          noTelp.includes(key) ||
+          aktivitas.includes(key) ||
+          ruangKerja.includes(key) ||
+          keterangan.includes(key)
+        );
+      });
+    }
+
+    setFilteredData(result);
   };
 
   const handleReset = () => {
-    setQInput("");
-    setQ("");
+    setStartDate("");
+    setEndDate("");
+    setKeyword("");
     setSearchBy("all");
-    setDateFrom("");
-    setDateTo("");
+    setFilteredData(mergedData);
+  };
+
+  const exportToExcel = () => {
+    if (filteredData.length === 0) {
+      alert("Tidak ada data untuk diexport!");
+      return;
+    }
+
+    const dataToExport = filteredData.map((r) => ({
+      Hari: r.hari,
+      Tanggal: r.tanggal,
+      Nama: r.nama,
+      Perusahaan: r.instansi,
+      "Nomor Telepon": r.noTelp,
+      Aktivitas: r.aktivitas,
+      "Waktu Masuk": r.jamMasuk
+        ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-",
+      "Waktu Keluar": r.jamKeluar
+        ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-",
+      "Ruang Kerja": r.ruangKerja,
+      "No. VISIT/E SIK": r.keterangan,
+      Status: r.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "BukuTamu");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const blob = new Blob([excelBuffer], {
+      type: "application/octet-stream",
+    });
+
+    saveAs(blob, `BukuTamu_${ttc}.xlsx`);
+  };
+
+  const openInfo = (r) => {
+    setSelectedTamu(r.raw);
+    setShowPopup(true);
   };
 
   return (
     <div className="bt-wrap">
       <div className="bt-panel">
-        <h3 className="security-title mb-3">Buku Tamu (Completed) - {siteLabel}</h3>
-
-        {/* optional debug info
-        <div className="mb-2" style={{ fontSize: 12, opacity: 0.75 }}>
-          User: <b>{username}</b> | Host: <b>{apiHost}</b> | TTC: <b>{ttc}</b>
-        </div>
-        */}
+        <h3 className="security-title mb-3">
+          Buku Tamu (Completed) - {SITE.label}
+        </h3>
 
         <div className="bt-filters">
           <div className="bt-field">
@@ -152,12 +231,12 @@ export default function BukuTamu() {
               onChange={(e) => setSearchBy(e.target.value)}
             >
               <option value="all">Semua</option>
-              <option value="name">Nama</option>
-              <option value="company">Perusahaan</option>
-              <option value="visit_id">VISIT/E-SIK</option>
-              <option value="phone">Telepon</option>
-              <option value="ruang_kerja">Ruang</option>
-              <option value="activity">Aktivitas</option>
+              <option value="nama">Nama</option>
+              <option value="instansi">Perusahaan</option>
+              <option value="telepon">Telepon</option>
+              <option value="aktivitas">Aktivitas</option>
+              <option value="ruang">Ruang</option>
+              <option value="visit">VISIT/E-SIK</option>
             </select>
           </div>
 
@@ -166,19 +245,18 @@ export default function BukuTamu() {
             <div className="bt-input">
               <i className="bi bi-search"></i>
               <input
-                value={qInput}
-                onChange={(e) => setQInput(e.target.value)}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Ketik kata kunci..."
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Enter") handleFilter();
                 }}
               />
               <button
                 type="button"
                 className="btn btn-sm btn-outline-primary ms-2"
-                onClick={handleSearch}
+                onClick={handleFilter}
                 disabled={loading}
-                title="Cari"
               >
                 Cari
               </button>
@@ -187,7 +265,6 @@ export default function BukuTamu() {
                 className="btn btn-sm btn-outline-secondary ms-2"
                 onClick={handleReset}
                 disabled={loading}
-                title="Reset"
               >
                 Reset
               </button>
@@ -199,8 +276,8 @@ export default function BukuTamu() {
             <input
               className="bt-date"
               type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
 
@@ -209,23 +286,22 @@ export default function BukuTamu() {
             <input
               className="bt-date"
               type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
 
           <div className="bt-field bt-right">
             <label>Total</label>
-            <div className="bt-total">{filtered.length}</div>
+            <div className="bt-total">{filteredData.length}</div>
           </div>
 
           <div className="bt-field bt-right">
             <label>Export</label>
             <button
               className="btn btn-sm btn-outline-success"
-              onClick={() => exportBukuTamuXLSX(filtered, toast)}
-              disabled={loading || filtered.length === 0}
-              title="Export data yang sudah terfilter"
+              onClick={exportToExcel}
+              disabled={loading || filteredData.length === 0}
             >
               <i className="bi bi-file-earmark-excel me-1"></i>
               Export Excel
@@ -239,13 +315,16 @@ export default function BukuTamu() {
               <tr>
                 <th>Hari</th>
                 <th>Tanggal</th>
-                <th>Jam</th>
                 <th>Nama</th>
                 <th>Perusahaan</th>
-                <th>Telepon</th>
+                <th>Nomor Telepon</th>
                 <th>Aktivitas</th>
-                <th>Ruang</th>
-                <th>VISIT/E-SIK</th>
+                <th>Waktu Masuk</th>
+                <th>Foto Masuk</th>
+                <th>Waktu Keluar</th>
+                <th>Foto Keluar</th>
+                <th>Ruang Kerja</th>
+                <th>No. VISIT/E SIK</th>
                 <th>Status</th>
                 <th>Info</th>
               </tr>
@@ -254,73 +333,83 @@ export default function BukuTamu() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="bt-empty">
+                  <td colSpan="14" className="bt-empty">
                     Memuat data...
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="bt-empty">
-                    Data kosong / belum ada tamu selesai.
+                  <td colSpan="14" className="bt-empty">
+                    Belum ada data tamu selesai
                   </td>
                 </tr>
               ) : (
-                filtered.map((t) => {
-                  const created = new Date(t.created_at);
-                  const hari = Number.isNaN(created.getTime())
-                    ? "-"
-                    : created.toLocaleDateString("id-ID", { weekday: "long" });
-                  const tanggal = Number.isNaN(created.getTime())
-                    ? "-"
-                    : created.toLocaleDateString("id-ID");
-                  const jam = Number.isNaN(created.getTime())
-                    ? "-"
-                    : created.toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-
-                  return (
-                    <tr key={t.id}>
-                      <td data-label="Hari">{hari}</td>
-                      <td data-label="Tanggal">{tanggal}</td>
-                      <td data-label="Jam">{jam}</td>
-                      <td data-label="Nama" className="bt-strong">
-                        {t.name || "-"}
-                      </td>
-                      <td data-label="Perusahaan">{t.company || "-"}</td>
-                      <td data-label="Telepon">{t.phone || "-"}</td>
-                      <td
-                        data-label="Aktivitas"
-                        className="bt-truncate"
-                        title={t.activity || "-"}
-                      >
-                        {t.activity || "-"}
-                      </td>
-                      <td data-label="Ruang">{t.ruang_kerja || "-"}</td>
-                      <td data-label="VISIT/E-SIK" className="bt-mono">
-                        {t.visit_id || "-"}
-                      </td>
-                      <td data-label="Status">
-                        <span className="bt-pill bt-pill-done">
-                          {t.status || "-"}
-                        </span>
-                      </td>
-                      <td data-label="Info">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => {
-                            setSelected(t);
-                            setOpenInfo(true);
+                filteredData.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.hari}</td>
+                    <td>{r.tanggal}</td>
+                    <td>{r.nama}</td>
+                    <td>{r.instansi}</td>
+                    <td>{r.noTelp}</td>
+                    <td>{r.aktivitas}</td>
+                    <td>
+                      {r.jamMasuk
+                        ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
+                    <td style={{ minWidth: 90 }}>
+                      {r.dokumentasi_in && r.dokumentasi_in !== "-" ? (
+                        <img
+                          src={`${apiHost}/storage/visitors/${r.dokumentasi_in}?t=${Date.now()}`}
+                          alt="foto masuk"
+                          style={{ width: "70px", borderRadius: "2px" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
                           }}
-                          title="Lihat detail"
-                        >
-                          <i className="bi bi-info-circle"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      {r.jamKeluar
+                        ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
+                    </td>
+                    <td style={{ minWidth: 90 }}>
+                      {r.dokumentasi_out && r.dokumentasi_out !== "-" ? (
+                        <img
+                          src={`${apiHost}/storage/visitors/${r.dokumentasi_out}?t=${Date.now()}`}
+                          alt="foto keluar"
+                          style={{ width: "70px", borderRadius: "2px" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>{r.ruangKerja}</td>
+                    <td>{r.keterangan}</td>
+                    <td>{r.status}</td>
+                    <td>
+                      <button
+                        className="btn btn-outline-info btn-sm"
+                        onClick={() => openInfo(r)}
+                        title="Lihat detail"
+                      >
+                        <i className="bi bi-info-circle"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -328,10 +417,10 @@ export default function BukuTamu() {
       </div>
 
       <ModalInfo
-        open={openInfo}
-        onClose={() => setOpenInfo(false)}
+        open={showPopup}
+        onClose={() => setShowPopup(false)}
         apiHost={apiHost}
-        tamu={selected}
+        tamu={selectedTamu}
       />
     </div>
   );
