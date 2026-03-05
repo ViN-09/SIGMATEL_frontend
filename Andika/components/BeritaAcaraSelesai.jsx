@@ -12,7 +12,7 @@ import { getUser, HOST } from "../auth";
 const user=getUser()
 const host = HOST
 
-const TEST_MODE = true;
+// const TEST_MODE = true;
 
 
 export default function BeritaAcaraSelesai() {
@@ -22,15 +22,15 @@ export default function BeritaAcaraSelesai() {
   const [sampai, setSampai] = useState("");
   const [jenis, setJenis] = useState("");
 
-const user_id = TEST_MODE
-  ? user.id
-  : localStorage.getItem("user_id");
+// const user_id = TEST_MODE
+//   ? user.id
+//   : localStorage.getItem("user_id");
 
-const jabatan = `TEST_MODE`
-  ? user.jabatan
-  : localStorage.getItem("user_jabatan");
-console.log("USER ID:", user_id);
-console.log("JABATAN:", jabatan);
+// const jabatan = `TEST_MODE`
+//   ? user.jabatan
+//   : localStorage.getItem("user_jabatan");
+// console.log("USER ID:", user_id);
+// console.log("JABATAN:", jabatan);
 
 useEffect(() => {
   loadData();
@@ -353,14 +353,13 @@ const showModal = (detail, page = 1) => {
       const exportBtn = document.getElementById("btn-export");
       const approveBtn = document.getElementById("btn-approve");
       const approveStaffBtn = document.getElementById("btn-approve-staff");
-      const jabatan = TEST_MODE ? user.jabatan : localStorage.getItem("user_jabatan");
+      // const jabatan = TEST_MODE ? user.jabatan : localStorage.getItem("user_jabatan");
       if (next) next.onclick = () => showModal(detail, 2);
       if (prev) prev.onclick = () => showModal(detail, 1);
 
       if (exportBtn) {
         exportBtn.onclick = () => exportPDF(detail);
       }
-
         if (approveBtn && jabatan === "BM") {
           approveBtn.onclick = async () => {
             await approve(detail.id);
@@ -382,157 +381,283 @@ const showModal = (detail, page = 1) => {
   });
 };
 
-  /* ================= EXPORT EXCEL ================= */
-  const exportExcel = () => {
-    if (data.length === 0) {
-      Swal.fire("Tidak ada data");
-      return;
-    }
+/* ================= EXPORT EXCEL ================= */
+const exportExcel = () => {
 
-    const exportData = data.map((row) => ({
-      Nomor: row.nomor,
-      Tanggal: row.tanggal,
-      Jenis: row.jenis,
-      Staff: row.staff_nama,
-      Status: row.approval_status
-    }));
+  if (!data || data.length === 0) {
+    Swal.fire("Tidak ada data");
+    return;
+  }
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Berita Acara ");
+  const now = new Date();
+  const bulan = now.toLocaleString("id-ID", { month: "long" }).toUpperCase();
+  const tahun = now.getFullYear();
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array"
+  const sheetData = [];
+
+  sheetData.push(["DATA BARANG MASUK DAN KELUAR"]);
+  sheetData.push(["PERIODE " + bulan + " " + tahun]);
+  sheetData.push([]);
+
+  sheetData.push(["BARANG MASUK"]);
+  sheetData.push(["NO", "HARI / TANGGAL", "NAMA BARANG", "PENGIRIM", "PENERIMA"]);
+
+  let no = 1;
+
+  data
+    .filter(row => row.jenis === "MASUK")
+    .forEach(row => {
+
+      let barang = [];
+
+      try {
+        barang = Array.isArray(row.barang)
+          ? row.barang
+          : JSON.parse(row.barang);
+      } catch {
+        barang = [];
+      }
+
+      const barangText = barang
+        .map((b, i) =>
+          (i + 1) + ". " + (b.nama || b.nama_barang || "") +
+          "\r\nJUMLAH: " + (b.jumlah || "")
+        )
+        .join("\r\n");
+
+      const tanggal = new Date(row.tanggal).toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).toUpperCase();
+
+          const pengirim =
+            (row.pihakA_nama || "-") +
+            "\r\n(" +
+            (row.pihakA_jabatan || "-") +
+            ")";
+
+          const penerima =
+            (row.staff_nama || "-") +
+            "\r\n(" +
+            (row.site || "-") +
+            ")";
+
+            console.log(row);
+
+      sheetData.push([
+        no,
+        tanggal,
+        barangText,
+        pengirim,
+        penerima
+      ]);
+
+      no++;
     });
 
-    const blob = new Blob([excelBuffer], {
-      type: "application/octet-stream"
+  sheetData.push([]);
+  sheetData.push([]);
+
+  sheetData.push(["BARANG KELUAR"]);
+  sheetData.push(["NO", "HARI / TANGGAL", "NAMA BARANG", "PENGIRIM", "PENERIMA"]);
+
+  no = 1;
+
+  data
+    .filter(row => row.jenis === "KELUAR")
+    .forEach(row => {
+
+      let barang = [];
+
+      try {
+        barang = Array.isArray(row.barang)
+          ? row.barang
+          : JSON.parse(row.barang);
+      } catch {
+        barang = [];
+      }
+
+      const barangText = barang
+        .map((b, i) =>
+          (i + 1) + ". " + (b.nama || b.nama_barang || "") +
+          "\r\nJUMLAH: " + (b.jumlah || "")
+        )
+        .join("\r\n");
+
+      const tanggal = new Date(row.tanggal).toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).toUpperCase();
+
+            const pengirim =
+              (row.staff_nama || "-") +
+              "\r\n(" +
+              (row.site || "-") +
+              ")";
+
+              const penerima =
+                (row.pihakB_nama || "-") +
+                "\r\n(" +
+                (row.pihakB_jabatan || "-") +
+                ")";
+
+      sheetData.push([
+        no,
+        tanggal,
+        barangText,
+        pengirim,
+        penerima
+      ]);
+
+      no++;
     });
 
-    saveAs(blob, `BA_Selesai.xlsx`);
-  };
 
-  /* ================= RENDER ================= */
-return (
-  <div className="table-wrapper">
-    <div className="ba-page">
-  <h2 className="ba-tittle">Berita Acara Selesai</h2>
+const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 30 },
+    { wch: 45 },
+    { wch: 25 },
+    { wch: 25 }
+  ];
 
-{/* ===== FILTER SECTION ===== */}
-<div className="ba-filter-wrapper">
-  <div className="ba-filter-left">
-    <label>Dari:</label>
-    <input
-      type="date"
-      value={dari}
-      onChange={(e) => setDari(e.target.value)}
-    />
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } }
+  ];
 
-      <label>Sampai:</label>
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "LAPORAN");
+
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array"
+  });
+
+  const blob = new Blob([excelBuffer], {
+    type: "application/octet-stream"
+  });
+
+  saveAs(
+    blob,
+    "Laporan_Berita_Acara_" + bulan + "_" + tahun + ".xlsx"
+  );
+};
+
+
+
+    /* ================= RENDER ================= */
+  return (
+    <div className="table-wrapper">
+      <div className="ba-page">
+    <h2 className="ba-tittle">Berita Acara Selesai</h2>
+
+  {/* ===== FILTER SECTION ===== */}
+  <div className="ba-filter-wrapper">
+    <div className="ba-filter-left">
+      <label>Dari:</label>
       <input
         type="date"
-        value={sampai}
-        onChange={(e) => setSampai(e.target.value)}
+        value={dari}
+        onChange={(e) => setDari(e.target.value)}
       />
 
-  
-    <label>Jenis:</label>
-    <select
-      value={jenis}
-      onChange={(e) => setJenis(e.target.value)}
-    >
-      <option value="">Semua</option>
-      <option value="MASUK">MASUK</option>
-      <option value="KELUAR">KELUAR</option>
-    </select>
-   </div> 
+        <label>Sampai:</label>
+        <input
+          type="date"
+          value={sampai}
+          onChange={(e) => setSampai(e.target.value)}
+        />
 
-  <div className="ba-filter-left">
-    <button className="btn-filter" onClick={loadData}>
-      Filter
-    </button>
-
-    <button
-      className="btn-reset"
-      onClick={() => {
-        setDari("");
-        setSampai("");
-        setJenis("");
-        loadData();
-      }}
-    >
-      Reset
-    </button>
-
-    <button className="btn-export" onClick={exportExcel}>
-      Export
-    </button>
-  </div>
-</div>
-</div>
-      <table className="ba-table">
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Nomor</th>
-            <th>Nama Barang</th>
-            <th>Keterangan</th>
-            <th>Tanggal</th>
-            <th>Jenis</th>
-            <th>Nama Tamu</th>
-            <th>Asal Tamu</th>
-            <th>Staff</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-<tbody>
-  {data.map((row, i) => {
-    const tamuNama =
-      row.jenis === "MASUK"
-        ? row.pihakA_nama
-        : row.pihakB_nama;
-
-    const tamuAsal =
-      row.jenis === "MASUK"
-        ? row.pihakA_jabatan
-        : row.pihakB_jabatan;
-
-    return (
-      <tr
-        key={row.id}
-        className="clickable-row"
-        onClick={() => openDetail(row.id_berita || row.id)}
+    
+      <label>Jenis:</label>
+      <select
+        value={jenis}
+        onChange={(e) => setJenis(e.target.value)}
       >
-        <td>{i + 1}</td>
-        <td>{row.nomor}</td>
-        <td>
-          {JSON.parse(row.barang).map((b, i) => (
-            <div key={i} style={{ marginBottom: "8px" }}>
-              <div><b>{i + 1}. {b.nama}</b></div>
-              <div style={{ fontStyle: "italic" }}>
-                JUMLAH: {b.jumlah}
-              </div>
-            </div>
-          ))}
-        </td>
-        <td>{row.keterangan}</td>
-        <td>{row.tanggal}</td>
-        <td>{row.jenis}</td>
-        <td>{tamuNama}</td>
-        <td>{tamuAsal}</td>
-        <td>{row.staff_nama}</td>
-        <td>
-          <span className={`badge ${row.approval_status}`}>
-            {row.approval_status}
-          </span>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-      </table>
+        <option value="">Semua</option>
+        <option value="MASUK">MASUK</option>
+        <option value="KELUAR">KELUAR</option>
+      </select>
+    </div> 
+
+    <div className="ba-filter-left">
+      <button className="btn-filter" onClick={loadData}>
+        Filter
+      </button>
+
+      <button
+        className="btn-reset"
+        onClick={() => {
+          setDari("");
+          setSampai("");
+          setJenis("");
+          loadData();
+        }}
+      >
+        Reset
+      </button>
+
+      <button className="btn-export" onClick={exportExcel}>
+        Export
+      </button>
+    </div>
+  </div>
+  </div>
+        <table className="ba-table">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nomor</th>
+              <th>Tanggal</th>
+              <th>Jenis</th>
+              <th>Nama Tamu</th>
+              <th>Asal Tamu</th>
+              <th>Staff</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+  <tbody>
+    {data.map((row, i) => {
+      const tamuNama =
+        row.jenis === "MASUK"
+          ? row.pihakA_nama
+          : row.pihakB_nama;
+
+      const tamuAsal =
+        row.jenis === "MASUK"
+          ? row.pihakA_jabatan
+          : row.pihakB_jabatan;
+
+      return (
+        <tr
+          key={row.id}
+          className="clickable-row"
+          onClick={() => openDetail(row.id_berita || row.id)}
+        >
+          <td>{i + 1}</td>
+          <td>{row.nomor}</td>
+          <td>{row.tanggal}</td>
+          <td>{row.jenis}</td>
+          <td>{tamuNama}</td>
+          <td>{tamuAsal}</td>
+          <td>{row.staff_nama}</td>
+          <td>
+            <span className={`badge ${row.approval_status}`}>
+              {row.approval_status}
+            </span>
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+        </table>
 
       {loading && <p>Loading...</p>}
     </div>

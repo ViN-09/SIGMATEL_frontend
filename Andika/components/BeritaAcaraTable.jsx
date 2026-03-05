@@ -96,7 +96,7 @@ const buildPDFHTML = (d, page = 1) => {
 <div style="font-family:Inter; font-size:14px; color:#111">
 
   <div style="display:flex; justify-content:space-between;">
-    <img src="/logo.png" height="50"/>
+    <img src="../backend/public/public/logo.png" height="50"/>
     <img src="/Logo Kanan.png" height="50"/>
   </div>
 
