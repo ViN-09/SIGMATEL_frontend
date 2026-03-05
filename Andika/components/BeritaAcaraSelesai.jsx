@@ -12,7 +12,7 @@ import { getUser, HOST } from "../auth";
 const user=getUser()
 const host = HOST
 
-const TEST_MODE = true;
+const TEST_MODE = false;
 
 
 export default function BeritaAcaraSelesai() {
@@ -22,15 +22,15 @@ export default function BeritaAcaraSelesai() {
   const [sampai, setSampai] = useState("");
   const [jenis, setJenis] = useState("");
 
-const user_id = TEST_MODE
-  ? user.id
-  : localStorage.getItem("user_id");
+// const user_id = TEST_MODE
+//   ? user.id
+//   : localStorage.getItem("user_id");
 
-const jabatan = `TEST_MODE`
-  ? user.jabatan
-  : localStorage.getItem("user_jabatan");
-console.log("USER ID:", user_id);
-console.log("JABATAN:", jabatan);
+// const jabatan = `TEST_MODE`
+//   ? user.jabatan
+//   : localStorage.getItem("user_jabatan");
+// console.log("USER ID:", user_id);
+// console.log("JABATAN:", jabatan);
 
 useEffect(() => {
   loadData();

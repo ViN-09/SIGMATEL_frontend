@@ -1,9 +1,13 @@
 // ===============================
 // AUTH CONFIG & HELPERS (1 FILE)
 // ===============================
+// const naula = "http://localhost:8000/api_dika";
+// const andika = "http://127.0.0.1:8000/api_dika"
 
-// ====== HOST ======
-export const HOST = "http://127.0.0.1:8000/api_dika";
+// // ====== HOST ======
+// export const HOST = "http://127.0.0.1:8000/api_dika";
+const { protocol, hostname } = window.location;
+export const HOST = `${protocol}//${hostname}:8000/api_dika`;
 
 // ====== HARDCODE USER (TEST MODE) ======
 export const UserME = {
