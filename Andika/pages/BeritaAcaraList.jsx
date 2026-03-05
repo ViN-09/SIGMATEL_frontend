@@ -10,8 +10,6 @@ export default function BeritaAcaraList() {
 
   
   
-  
-  
   const user=getUser('BM') // Kalau Mau Tes Role Ganti BM Atau ME
   const host = HOST
 

@@ -1,24 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import ModalInfo from "./ModalInfo";
-import { fetchDoneVisitors } from "./Visitor";
+import { fetchDoneVisitors } from "./TestVisitor";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { getSITE, HOST, getUserInfo } from "../../Auth/Property";
+import { getSITE, HOST, getUSER } from "../auth";
 import { exportBukuTamuXLSX } from "./exportExcel";
 
 export default function BukuTamu() {
   const ttc = getSITE();
   const apiHost = HOST;
-  const user = getUserInfo();
+  const user = getUSER("teling");
+  console.log("user", user);
   const username = user.id;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
-  const [searchBy, setSearchBy] = useState("all"); // ✅ tambah ini
+  const [searchBy, setSearchBy] = useState("all");
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -38,17 +40,49 @@ export default function BukuTamu() {
     });
   };
 
-  const loadVisitors = async () => {
+  const loadVisitors = async (filters = null) => {
     setLoading(true);
-    const data = await fetchDoneVisitors(ttc);
+
+    const data = await fetchDoneVisitors(
+      filters
+        ? {
+            q: filters.q ?? "",
+            searchBy: filters.searchBy ?? "all",
+            dateFrom: filters.dateFrom ?? "",
+            dateTo: filters.dateTo ?? "",
+            all: 1,
+          }
+        : {}
+    );
+
     setRows(data);
     if (!data.length) toast("Tidak ada tamu selesai", "info");
     setLoading(false);
+    return data;
   };
 
   useEffect(() => {
     loadVisitors();
   }, [ttc]);
+
+  const handleSearch = async () => {
+    await loadVisitors({
+      q: qInput,
+      searchBy,
+      dateFrom,
+      dateTo,
+    });
+    setQ(qInput);
+  };
+
+  const handleReset = async () => {
+    setQInput("");
+    setQ("");
+    setSearchBy("all");
+    setDateFrom("");
+    setDateTo("");
+    await loadVisitors();
+  };
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
@@ -115,15 +149,39 @@ export default function BukuTamu() {
             </select>
           </div>
 
+          {/* tombol Cari & Reset */}
           <div className="bt-field">
             <label>Cari</label>
             <div className="bt-input">
               <i className="bi bi-search"></i>
               <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
                 placeholder="Ketik kata kunci..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
               />
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary ms-2"
+                onClick={handleSearch}
+                disabled={loading}
+                title="Cari"
+              >
+                Cari
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary ms-2"
+                onClick={handleReset}
+                disabled={loading}
+                title="Reset"
+              >
+                Reset
+              </button>
             </div>
           </div>
 
@@ -213,11 +271,7 @@ export default function BukuTamu() {
                     </td>
                     <td data-label="Perusahaan">{t.company}</td>
                     <td data-label="Telepon">{t.phone}</td>
-                    <td
-                      data-label="Aktivitas"
-                      className="bt-truncate"
-                      title={t.activity}
-                    >
+                    <td data-label="Aktivitas" className="bt-truncate" title={t.activity}>
                       {t.activity}
                     </td>
                     <td data-label="Ruang">{t.ruang_kerja}</td>
