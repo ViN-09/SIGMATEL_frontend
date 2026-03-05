@@ -5,13 +5,14 @@ import { fetchDoneVisitors } from "./Visitor";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { getSITE, HOST, getUserInfo } from "../../Auth/Property";
+import { getSITE, HOST, getUSER } from "../auth";
 import { exportBukuTamuXLSX } from "./exportExcel";
 
 export default function BukuTamu() {
   const ttc = getSITE();
   const apiHost = HOST;
-  const user = getUserInfo();
+  const user = getUSER('teling');
+  console.log("user", user)
   const username = user.id;
 
   const [rows, setRows] = useState([]);
