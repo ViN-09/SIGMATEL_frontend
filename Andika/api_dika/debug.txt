@@ -1,0 +1,1 @@
+{"id_berita":180,"nomor":"MDO018/II/2026/017","barang":[{"nama":"sdasd","jumlah":"232","tipe":"sdas","sn":"sdad"}]}
