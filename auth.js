@@ -4,15 +4,17 @@
 export const HOST = "http://127.0.0.1:8000";
 
 const UserPaniki = {
-  nama: "MND24074312019",
-  jabatan: "Hendry Kantohe",
+  id: "MND24074312019",
+  nama: "Hendry Kantohe",
+  jabatan: "ME",
   site: "TTC Paniki",
   gambar: null,
   ttd: null,
 }
 const UserTeling = {
-  nama: "MND24074311051",
-  jabatan: "Franco Gino Bawiling",
+  id: "MND24074311051",
+  Nama: "Franco Gino Bawiling",
+  jabatan: "ME",
   site: "TTC Teling",
   gambar: null,
   ttd: null,
@@ -22,22 +24,22 @@ const UserTeling = {
 // SITE HANDLER
 // ==============================
 export const getUSER = (type) => {
-    let userValue = null;
-    switch (type) {
-        case "paniki":
-            userValue = UserPaniki;
-            break;
-        case "teling":
-            userValue = UserTeling;
-            break;
-        default:
-            return null;
-    }
+  let userValue = null;
+  switch (type) {
+    case "paniki":
+      userValue = UserPaniki;
+      break;
+    case "teling":
+      userValue = UserTeling;
+      break;
+    default:
+      return null;
+  }
 
-    // Simpan ke sessionStorage
-    sessionStorage.setItem("userinfo", JSON.stringify(userValue));
-    // Return dari sessionStorage (biar konsisten)
-    return JSON.parse(sessionStorage.getItem("userinfo"));
+  // Simpan ke sessionStorage
+  sessionStorage.setItem("userinfo", JSON.stringify(userValue));
+  // Return dari sessionStorage (biar konsisten)
+  return JSON.parse(sessionStorage.getItem("userinfo"));
 };
 
 export function sitesaperator(site) {
