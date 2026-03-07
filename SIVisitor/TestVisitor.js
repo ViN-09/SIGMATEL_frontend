@@ -1,102 +1,136 @@
-import { HOST, getSITE, getUSER } from "../auth";
+const API_HOST = "http://127.0.0.1:8000";
 
-export async function fetchDoneVisitors(filters = {}) {
-  const user = getUSER();
-  const apiHost = HOST;
-  const ttc = getSITE();
-
-  const params = new URLSearchParams();
-  if (filters?.q) params.set("q", String(filters.q));
-  if (filters?.searchBy) params.set("searchBy", String(filters.searchBy));
-  if (filters?.dateFrom) params.set("dateFrom", String(filters.dateFrom));
-  if (filters?.dateTo) params.set("dateTo", String(filters.dateTo));
-
-  if (filters?.all) params.set("all", "1");
-
-  const qs = params.toString();
-  const listURL = `${apiHost}/api/${ttc}/visitor/visitors/completed${qs ? `?${qs}` : ""}`;
-
-  const safeReadJson = async (res) => {
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) {
-      const text = await res.text();
-      throw new Error(
-        `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
-      );
-    }
-    return res.json();
-  };
+function getSiteConfig() {
+  const raw = sessionStorage.getItem("userinfo");
+  let user = null;
 
   try {
-    const res = await fetch(listURL, { credentials: "include" });
-    const json = await safeReadJson(res);
-    if (!json?.success) throw new Error(json?.message || "Gagal ambil data");
+    user = raw ? JSON.parse(raw) : null;
+  } catch {
+    user = null;
+  }
 
-    const all = Array.isArray(json.data) ? json.data : [];
-    const done = all.filter((t) => {
-      const okStatus = String(t?.status || "").toLowerCase() === "selesai";
-      const hasIn = !!String(t?.dokumentasi_in || "").trim();
-      const hasOut = !!String(t?.dokumentasi_out || "").trim();
-      return okStatus && hasIn && hasOut;
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
+  // fallback
+  return {
+    username: user.name,
+    ttc: "ttc_paniki",
+    label: "TTC Paniki",
+  };
+}
+
+async function safeReadJson(res) {
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    const text = await res.text();
+    throw new Error(
+      `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
+    );
+  }
+  return res.json();
+}
+
+export async function fetchDoneVisitorsRaw() {
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const url = `${API_HOST}/api/${ttc}/visitor/completed`;
+
+  try {
+    console.log("fetchDoneVisitorsRaw SITE:", SITE);
+    console.log("fetchDoneVisitorsRaw URL:", url);
+    console.log("session userinfo:", sessionStorage.getItem("userinfo"));
+
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
     });
 
-    done.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const json = await safeReadJson(res);
+    console.log("fetchDoneVisitorsRaw response:", json);
 
-    return done;
+    if (json.success) {
+      return Array.isArray(json.data) ? json.data : [];
+    }
+
+    console.error("Gagal ambil data:", json.message);
+    return [];
   } catch (err) {
-    console.error("fetchDoneVisitors error:", err);
+    console.error("fetchDoneVisitorsRaw error:", err);
     return [];
   }
 }
 
 export async function updateStatusVisitor(id, type, file, userID) {
-  const apiHost = HOST;
-  const ttc = getSITE();
-  const updateURL = `${apiHost}/api/${ttc}/visitor/visitors/${id}/update-status`;
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const updateURL = `${API_HOST}/api/${ttc}/visitor/visitors/${id}/update-status`;
 
   const formData = new FormData();
   if (type === "in") formData.append("dokumentasi_in", file);
   if (type === "out") formData.append("dokumentasi_out", file);
-
-  formData.append(
-    "status",
-    type === "in" ? "approved" : type === "out" ? "selesai" : "rejected"
-  );
+  formData.append("status", type === "in" ? "approved" : "selesai");
 
   const res = await fetch(updateURL, {
     method: "POST",
     body: formData,
     credentials: "include",
-    headers: { userid: String(userID) },
+    headers: {
+      userid: String(userID),
+      Accept: "application/json",
+    },
   });
 
   return res.json();
 }
 
 export async function fetchTamu() {
-  const apiHost = HOST;
-  const ttc = getSITE();
-  const listURL = `${apiHost}/api/${ttc}/visitor/waiting`;
-
-  const safeReadJson = async (res) => {
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) {
-      const text = await res.text();
-      throw new Error(
-        `Bukan JSON. status=${res.status}. body awal: ${text.slice(0, 120)}`
-      );
-    }
-    return res.json();
-  };
+  const SITE = getSiteConfig();
+  const ttc = SITE.ttc;
+  const listURL = `${API_HOST}/api/${ttc}/visitor/waiting`;
 
   try {
-    const res = await fetch(listURL, { credentials: "include" });
+    console.log("fetchTamu SITE:", SITE);
+    console.log("fetchTamu URL:", listURL);
+
+    const res = await fetch(listURL, {
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
     const json = await safeReadJson(res);
 
-    if (json.success) return json.data || [];
-    throw new Error(json.message || "Gagal ambil data");
+    if (json?.success) {
+      return json.data || [];
+    }
+
+    throw new Error(json?.message || "Gagal ambil data");
   } catch (err) {
     console.error("fetchTamu error:", err);
     return [];
