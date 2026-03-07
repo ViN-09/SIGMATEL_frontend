@@ -19,12 +19,125 @@ function getSiteConfig() {
     user = null;
   }
 
-  // test data paniki cesss
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
   return {
-    username: user?.name || "unknown",
+    username: user.name,
     ttc: "ttc_paniki",
     label: "TTC Paniki",
   };
+}
+
+function mapVisitorData(rawData) {
+  return (rawData || [])
+    .map((item) => {
+      const created = new Date(item.created_at);
+
+      return {
+        id: item.id,
+        hari: Number.isNaN(created.getTime())
+          ? "-"
+          : created.toLocaleDateString("id-ID", { weekday: "long" }),
+        tanggal: Number.isNaN(created.getTime())
+          ? "-"
+          : created.toLocaleDateString("id-ID"),
+        tanggalRaw: created,
+        nama: item.name || "-",
+        instansi: item.company || "-",
+        noTelp: item.phone || "-",
+        aktivitas: item.activity || "-",
+        jamMasuk: item.created_at || "",
+        dokumentasi_in: item.dokumentasi_in || "-",
+        jamKeluar: item.updated_at || "",
+        dokumentasi_out: item.dokumentasi_out || "-",
+        ruangKerja: item.ruang_kerja || "-",
+        keterangan: item.visit_id || "-",
+        status: item.status || "-",
+        id_type: item.id_type || "-",
+        id_number: item.id_number || "-",
+        signature: item.signature || "-",
+        created_at: item.created_at || "",
+        updated_at: item.updated_at || "",
+        raw: item,
+      };
+    })
+    .sort((a, b) => {
+      const aTime =
+        a.tanggalRaw instanceof Date && !Number.isNaN(a.tanggalRaw.getTime())
+          ? a.tanggalRaw.getTime()
+          : 0;
+      const bTime =
+        b.tanggalRaw instanceof Date && !Number.isNaN(b.tanggalRaw.getTime())
+          ? b.tanggalRaw.getTime()
+          : 0;
+
+      return bTime - aTime;
+    });
+}
+
+function applyFilter(data, keyword, startDate, endDate) {
+  let result = [...data];
+
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    result = result.filter((item) => {
+      if (
+        !(item.tanggalRaw instanceof Date) ||
+        Number.isNaN(item.tanggalRaw.getTime())
+      ) {
+        return false;
+      }
+      return item.tanggalRaw >= start && item.tanggalRaw <= end;
+    });
+  }
+
+  const key = keyword.trim().toLowerCase();
+
+  if (key) {
+    result = result.filter((item) => {
+      return [
+        item.hari,
+        item.tanggal,
+        item.nama,
+        item.instansi,
+        item.noTelp,
+        item.aktivitas,
+        item.ruangKerja,
+        item.keterangan,
+        item.status,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(key);
+    });
+  }
+
+  return result;
 }
 
 export default function BukuTamu() {
@@ -33,135 +146,90 @@ export default function BukuTamu() {
   const ttc = SITE.ttc;
   const apiHost = API_HOST;
 
-  useEffect(() => {
-    sessionStorage.setItem("username", username);
-    sessionStorage.setItem("ttc", ttc);
-    sessionStorage.setItem("host", apiHost);
-  }, [username, ttc, apiHost]);
-
   const [mergedData, setMergedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [searchBy, setSearchBy] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedTamu, setSelectedTamu] = useState(null);
 
   useEffect(() => {
+    sessionStorage.setItem("username", username);
+    sessionStorage.setItem("ttc", ttc);
+    sessionStorage.setItem("host", apiHost);
+  }, [username, ttc, apiHost]);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadCompletedVisitors = async () => {
       setLoading(true);
       try {
-        console.log("BukuTamu SITE:", SITE);
-
         const rawData = await fetchDoneVisitorsRaw();
-        console.log("BukuTamu rawData:", rawData);
+        const data = mapVisitorData(rawData);
 
-        const data = (rawData || []).map((item) => {
-          const created = new Date(item.created_at);
-          const updated = new Date(item.updated_at);
-
-          return {
-            id: item.id,
-            hari: Number.isNaN(created.getTime())
-              ? "-"
-              : created.toLocaleDateString("id-ID", { weekday: "long" }),
-            tanggal: Number.isNaN(created.getTime())
-              ? "-"
-              : created.toLocaleDateString("id-ID"),
-            tanggalRaw: created,
-            nama: item.name || "-",
-            instansi: item.company || "-",
-            noTelp: item.phone || "-",
-            aktivitas: item.activity || "-",
-            jamMasuk: item.created_at || "",
-            dokumentasi_in: item.dokumentasi_in || "-",
-            jamKeluar: item.updated_at || "",
-            dokumentasi_out: item.dokumentasi_out || "-",
-            ruangKerja: item.ruang_kerja || "-",
-            keterangan: item.visit_id || "-",
-            status: item.status || "-",
-            id_type: item.id_type || "-",
-            id_number: item.id_number || "-",
-            signature: item.signature || "-",
-            created_at: item.created_at || "",
-            updated_at: item.updated_at || "",
-            raw: item,
-          };
-        });
-
-        console.log("BukuTamu mapped data:", data);
+        if (!isMounted) return;
 
         setMergedData(data);
         setFilteredData(data);
       } catch (err) {
         console.error("Error fetch completed visitors:", err);
+        if (!isMounted) return;
         setMergedData([]);
         setFilteredData([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadCompletedVisitors();
-  }, [apiHost, ttc]);
 
-  const handleFilter = () => {
-    let result = [...mergedData];
+    return () => {
+      isMounted = false;
+    };
+  }, [ttc, apiHost]);
 
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+  const handleFilter = async () => {
+    setLoading(true);
+    try {
+      const rawData = await fetchDoneVisitorsRaw();
+      const latestData = mapVisitorData(rawData);
+      const result = applyFilter(latestData, keyword, startDate, endDate);
 
-      result = result.filter((item) => {
-        if (!(item.tanggalRaw instanceof Date) || Number.isNaN(item.tanggalRaw.getTime())) {
-          return false;
-        }
-        return item.tanggalRaw >= start && item.tanggalRaw <= end;
-      });
+      setMergedData(latestData);
+      setFilteredData(result);
+    } catch (err) {
+      console.error("Error filter completed visitors:", err);
+      const fallback = applyFilter(mergedData, keyword, startDate, endDate);
+      setFilteredData(fallback);
+    } finally {
+      setLoading(false);
     }
-
-    const key = keyword.trim().toLowerCase();
-
-    if (key) {
-      result = result.filter((item) => {
-        const nama = String(item.nama || "").toLowerCase();
-        const instansi = String(item.instansi || "").toLowerCase();
-        const noTelp = String(item.noTelp || "").toLowerCase();
-        const aktivitas = String(item.aktivitas || "").toLowerCase();
-        const ruangKerja = String(item.ruangKerja || "").toLowerCase();
-        const keterangan = String(item.keterangan || "").toLowerCase();
-
-        if (searchBy === "nama") return nama.includes(key);
-        if (searchBy === "instansi") return instansi.includes(key);
-        if (searchBy === "telepon") return noTelp.includes(key);
-        if (searchBy === "aktivitas") return aktivitas.includes(key);
-        if (searchBy === "ruang") return ruangKerja.includes(key);
-        if (searchBy === "visit") return keterangan.includes(key);
-
-        return (
-          nama.includes(key) ||
-          instansi.includes(key) ||
-          noTelp.includes(key) ||
-          aktivitas.includes(key) ||
-          ruangKerja.includes(key) ||
-          keterangan.includes(key)
-        );
-      });
-    }
-
-    setFilteredData(result);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setStartDate("");
     setEndDate("");
     setKeyword("");
-    setSearchBy("all");
-    setFilteredData(mergedData);
+    setLoading(true);
+
+    try {
+      const rawData = await fetchDoneVisitorsRaw();
+      const latestData = mapVisitorData(rawData);
+
+      setMergedData(latestData);
+      setFilteredData(latestData);
+    } catch (err) {
+      console.error("Error reset completed visitors:", err);
+      setFilteredData(mergedData);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportToExcel = () => {
@@ -218,61 +286,35 @@ export default function BukuTamu() {
   return (
     <div className="bt-wrap">
       <div className="bt-panel">
-        <h3 className="security-title mb-3">
-          Buku Tamu (Completed) - {SITE.label}
-        </h3>
+        <div className="bt-header">
+          <div>
+            <h3 className="security-title mb-1">
+              Buku Tamu (Completed) - {SITE.label}
+            </h3>
+            <div className="bt-subtitle">
+              Data tamu selesai dengan pencarian sederhana dan tampilan lebih rapi
+            </div>
+          </div>
+        </div>
 
         <div className="bt-filters">
-          <div className="bt-field">
-            <label>Filter Cari</label>
-            <select
-              className="bt-date"
-              value={searchBy}
-              onChange={(e) => setSearchBy(e.target.value)}
-            >
-              <option value="all">Semua</option>
-              <option value="nama">Nama</option>
-              <option value="instansi">Perusahaan</option>
-              <option value="telepon">Telepon</option>
-              <option value="aktivitas">Aktivitas</option>
-              <option value="ruang">Ruang</option>
-              <option value="visit">VISIT/E-SIK</option>
-            </select>
-          </div>
-
-          <div className="bt-field">
-            <label>Cari</label>
+          <div className="bt-field bt-field-search">
+            <label>Cari Data</label>
             <div className="bt-input">
               <i className="bi bi-search"></i>
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Ketik kata kunci..."
+                placeholder="Cari nama, perusahaan, telepon, aktivitas, ruang kerja, VISIT/E-SIK..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleFilter();
                 }}
               />
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary ms-2"
-                onClick={handleFilter}
-                disabled={loading}
-              >
-                Cari
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary ms-2"
-                onClick={handleReset}
-                disabled={loading}
-              >
-                Reset
-              </button>
             </div>
           </div>
 
           <div className="bt-field">
-            <label>Dari</label>
+            <label>Dari Tanggal</label>
             <input
               className="bt-date"
               type="date"
@@ -282,7 +324,7 @@ export default function BukuTamu() {
           </div>
 
           <div className="bt-field">
-            <label>Sampai</label>
+            <label>Sampai Tanggal</label>
             <input
               className="bt-date"
               type="date"
@@ -291,21 +333,49 @@ export default function BukuTamu() {
             />
           </div>
 
-          <div className="bt-field bt-right">
-            <label>Total</label>
-            <div className="bt-total">{filteredData.length}</div>
+          <div className="bt-field bt-field-actions">
+            <label>Aksi</label>
+            <div className="bt-action-buttons">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleFilter}
+                disabled={loading}
+              >
+                <i className="bi bi-search me-1"></i>
+                Cari
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={handleReset}
+                disabled={loading}
+              >
+                <i className="bi bi-arrow-clockwise me-1"></i>
+                Reset
+              </button>
+            </div>
           </div>
 
-          <div className="bt-field bt-right">
-            <label>Export</label>
-            <button
-              className="btn btn-sm btn-outline-success"
-              onClick={exportToExcel}
-              disabled={loading || filteredData.length === 0}
-            >
-              <i className="bi bi-file-earmark-excel me-1"></i>
-              Export Excel
-            </button>
+          <div className="bt-summary-card">
+            <div className="bt-summary-item">
+              <span>Total Data</span>
+              <strong>{filteredData.length}</strong>
+            </div>
+
+            <div className="bt-summary-divider"></div>
+
+            <div className="bt-summary-export">
+              <button
+                className="btn btn-sm btn-outline-success"
+                onClick={exportToExcel}
+                disabled={loading || filteredData.length === 0}
+              >
+                <i className="bi bi-file-earmark-excel me-1"></i>
+                Export Excel
+              </button>
+            </div>
           </div>
         </div>
 
@@ -346,13 +416,13 @@ export default function BukuTamu() {
               ) : (
                 filteredData.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.hari}</td>
-                    <td>{r.tanggal}</td>
-                    <td>{r.nama}</td>
-                    <td>{r.instansi}</td>
-                    <td>{r.noTelp}</td>
-                    <td>{r.aktivitas}</td>
-                    <td>
+                    <td data-label="Hari">{r.hari}</td>
+                    <td data-label="Tanggal">{r.tanggal}</td>
+                    <td data-label="Nama">{r.nama}</td>
+                    <td data-label="Perusahaan">{r.instansi}</td>
+                    <td data-label="Nomor Telepon">{r.noTelp}</td>
+                    <td data-label="Aktivitas">{r.aktivitas}</td>
+                    <td data-label="Waktu Masuk">
                       {r.jamMasuk
                         ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", {
                             hour: "2-digit",
@@ -360,12 +430,13 @@ export default function BukuTamu() {
                           })
                         : "-"}
                     </td>
-                    <td style={{ minWidth: 90 }}>
+
+                    <td data-label="Foto Masuk" style={{ minWidth: 90 }}>
                       {r.dokumentasi_in && r.dokumentasi_in !== "-" ? (
                         <img
                           src={`${apiHost}/storage/visitors/${r.dokumentasi_in}?t=${Date.now()}`}
                           alt="foto masuk"
-                          style={{ width: "70px", borderRadius: "2px" }}
+                          className="bt-thumb"
                           onError={(e) => {
                             e.currentTarget.style.display = "none";
                           }}
@@ -374,7 +445,8 @@ export default function BukuTamu() {
                         "-"
                       )}
                     </td>
-                    <td>
+
+                    <td data-label="Waktu Keluar">
                       {r.jamKeluar
                         ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", {
                             hour: "2-digit",
@@ -382,12 +454,13 @@ export default function BukuTamu() {
                           })
                         : "-"}
                     </td>
-                    <td style={{ minWidth: 90 }}>
+
+                    <td data-label="Foto Keluar" style={{ minWidth: 90 }}>
                       {r.dokumentasi_out && r.dokumentasi_out !== "-" ? (
                         <img
                           src={`${apiHost}/storage/visitors/${r.dokumentasi_out}?t=${Date.now()}`}
                           alt="foto keluar"
-                          style={{ width: "70px", borderRadius: "2px" }}
+                          className="bt-thumb"
                           onError={(e) => {
                             e.currentTarget.style.display = "none";
                           }}
@@ -396,10 +469,15 @@ export default function BukuTamu() {
                         "-"
                       )}
                     </td>
-                    <td>{r.ruangKerja}</td>
-                    <td>{r.keterangan}</td>
-                    <td>{r.status}</td>
-                    <td>
+
+                    <td data-label="Ruang Kerja">{r.ruangKerja}</td>
+                    <td data-label="No. VISIT/E SIK">{r.keterangan}</td>
+
+                    <td data-label="Status">
+                      <span className="bt-status">{r.status}</span>
+                    </td>
+
+                    <td data-label="Info">
                       <button
                         className="btn btn-outline-info btn-sm"
                         onClick={() => openInfo(r)}

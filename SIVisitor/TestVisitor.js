@@ -10,9 +10,33 @@ function getSiteConfig() {
     user = null;
   }
 
-  // tes paniki cess
+  if (!user) {
+    return {
+      username: "unknown",
+      ttc: "ttc_paniki",
+      label: "Default",
+    };
+  }
+
+  if (user.site === "TTC Teling") {
+    return {
+      username: user.name,
+      ttc: "ttc_teling",
+      label: "TTC Teling",
+    };
+  }
+
+  if (user.site === "TTC Paniki") {
+    return {
+      username: user.name,
+      ttc: "ttc_paniki",
+      label: "TTC Paniki",
+    };
+  }
+
+  // fallback
   return {
-    username: user?.name || "unknown",
+    username: user.name,
     ttc: "ttc_paniki",
     label: "TTC Paniki",
   };
