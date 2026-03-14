@@ -188,7 +188,7 @@ export default function BukuTamu() {
 
           <div className="bt-summary-card">
             <div className="bt-summary-item">
-              <span>Total Data</span>
+              <span>Total Tamu</span>
               <strong>{filteredData.length}</strong>
             </div>
 
