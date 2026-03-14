@@ -175,6 +175,14 @@ export default function BukuTamu() {
                 <i className="bi bi-arrow-clockwise me-1"></i>
                 Reset
               </button>
+              <button
+                className="btn btn-outline-success btn-sm bt-export-btn"
+                onClick={exportToExcel}
+                disabled={loading || filteredData.length === 0}
+              >
+                <i className="bi bi-file-earmark-excel me-1"></i>
+                Export
+              </button>
             </div>
           </div>
 
@@ -184,18 +192,6 @@ export default function BukuTamu() {
               <strong>{filteredData.length}</strong>
             </div>
 
-            <div className="bt-summary-divider"></div>
-
-            <div className="bt-summary-export">
-              <button
-                className="btn btn-sm btn-outline-success"
-                onClick={exportToExcel}
-                disabled={loading || filteredData.length === 0}
-              >
-                <i className="bi bi-file-earmark-excel me-1"></i>
-                Export Excel
-              </button>
-            </div>
           </div>
         </div>
 
