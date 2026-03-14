@@ -2,157 +2,22 @@ import { useEffect, useState } from "react";
 import "./BukuTamu.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import ModalInfo from "./ModalInfo";
-import { fetchDoneVisitorsRaw } from "./TestVisitor";
-
-const API_HOST = "http://127.0.0.1:8000";
-
-function getSiteConfig() {
-  const raw = sessionStorage.getItem("userinfo");
-  let user = null;
-
-  try {
-    user = raw ? JSON.parse(raw) : null;
-  } catch {
-    user = null;
-  }
-
-  if (!user) {
-    return {
-      username: "unknown",
-      ttc: "ttc_paniki",
-      label: "Default",
-    };
-  }
-
-  if (user.site === "TTC Teling") {
-    return {
-      username: user.name,
-      ttc: "ttc_teling",
-      label: "TTC Teling",
-    };
-  }
-
-  if (user.site === "TTC Paniki") {
-    return {
-      username: user.name,
-      ttc: "ttc_paniki",
-      label: "TTC Paniki",
-    };
-  }
-
-  return {
-    username: user.name,
-    ttc: "ttc_paniki",
-    label: "TTC Paniki",
-  };
-}
-
-function mapVisitorData(rawData) {
-  return (rawData || [])
-    .map((item) => {
-      const created = new Date(item.created_at);
-
-      return {
-        id: item.id,
-        hari: Number.isNaN(created.getTime())
-          ? "-"
-          : created.toLocaleDateString("id-ID", { weekday: "long" }),
-        tanggal: Number.isNaN(created.getTime())
-          ? "-"
-          : created.toLocaleDateString("id-ID"),
-        tanggalRaw: created,
-        nama: item.name || "-",
-        instansi: item.company || "-",
-        noTelp: item.phone || "-",
-        aktivitas: item.activity || "-",
-        jamMasuk: item.created_at || "",
-        dokumentasi_in: item.dokumentasi_in || "-",
-        jamKeluar: item.updated_at || "",
-        dokumentasi_out: item.dokumentasi_out || "-",
-        ruangKerja: item.ruang_kerja || "-",
-        keterangan: item.visit_id || "-",
-        status: item.status || "-",
-        id_type: item.id_type || "-",
-        id_number: item.id_number || "-",
-        signature: item.signature || "-",
-        created_at: item.created_at || "",
-        updated_at: item.updated_at || "",
-        raw: item,
-      };
-    })
-    .sort((a, b) => {
-      const aTime =
-        a.tanggalRaw instanceof Date && !Number.isNaN(a.tanggalRaw.getTime())
-          ? a.tanggalRaw.getTime()
-          : 0;
-      const bTime =
-        b.tanggalRaw instanceof Date && !Number.isNaN(b.tanggalRaw.getTime())
-          ? b.tanggalRaw.getTime()
-          : 0;
-
-      return bTime - aTime;
-    });
-}
-
-function applyFilter(data, keyword, startDate, endDate) {
-  let result = [...data];
-
-  if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    result = result.filter((item) => {
-      if (
-        !(item.tanggalRaw instanceof Date) ||
-        Number.isNaN(item.tanggalRaw.getTime())
-      ) {
-        return false;
-      }
-      return item.tanggalRaw >= start && item.tanggalRaw <= end;
-    });
-  }
-
-  const key = keyword.trim().toLowerCase();
-
-  if (key) {
-    result = result.filter((item) => {
-      return [
-        item.hari,
-        item.tanggal,
-        item.nama,
-        item.instansi,
-        item.noTelp,
-        item.aktivitas,
-        item.ruangKerja,
-        item.keterangan,
-        item.status,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(key);
-    });
-  }
-
-  return result;
-}
+import { API_HOST, fetchDoneVisitorsRaw, getSiteConfig, mapVisitorData, applyFilter, exportExcel } from "./TestVisitor";
 
 export default function BukuTamu() {
   const SITE = getSiteConfig();
   const username = SITE.username;
   const ttc = SITE.ttc;
   const apiHost = API_HOST;
-
+  const [allDataLoaded, setAllDataLoaded] = useState(false);
   const [mergedData, setMergedData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const [monthData, setMonthData] = useState([]); 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedTamu, setSelectedTamu] = useState(null);
 
@@ -164,29 +29,31 @@ export default function BukuTamu() {
 
   useEffect(() => {
     let isMounted = true;
-
     const loadCompletedVisitors = async () => {
-      setLoading(true);
-      try {
-        const rawData = await fetchDoneVisitorsRaw();
-        const data = mapVisitorData(rawData);
+    setLoading(true);
 
-        if (!isMounted) return;
+  try {
+    const rawData = await fetchDoneVisitorsRaw("month");
+    const data = mapVisitorData(rawData);
 
-        setMergedData(data);
-        setFilteredData(data);
-      } catch (err) {
-        console.error("Error fetch completed visitors:", err);
-        if (!isMounted) return;
-        setMergedData([]);
-        setFilteredData([]);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+    if (!isMounted) return;
+    setMonthData(data);      
+    setMergedData(data);
+    setFilteredData(data);
 
+  } catch (err) {
+    console.error("Error fetch completed visitors:", err);
+
+    if (!isMounted) return;
+    setMergedData([]);
+    setFilteredData([]);
+
+  } finally {
+    if (isMounted) {
+      setLoading(false);
+    }
+  }
+};
     loadCompletedVisitors();
 
     return () => {
@@ -195,93 +62,49 @@ export default function BukuTamu() {
   }, [ttc, apiHost]);
 
   const handleFilter = async () => {
-    setLoading(true);
-    try {
-      const rawData = await fetchDoneVisitorsRaw();
-      const latestData = mapVisitorData(rawData);
-      const result = applyFilter(latestData, keyword, startDate, endDate);
-
-      setMergedData(latestData);
-      setFilteredData(result);
-    } catch (err) {
-      console.error("Error filter completed visitors:", err);
-      const fallback = applyFilter(mergedData, keyword, startDate, endDate);
-      setFilteredData(fallback);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReset = async () => {
-    setStartDate("");
-    setEndDate("");
-    setKeyword("");
+  let sourceData = allDataLoaded ? mergedData : monthData;
+  if (!allDataLoaded) {
     setLoading(true);
 
     try {
-      const rawData = await fetchDoneVisitorsRaw();
-      const latestData = mapVisitorData(rawData);
+      const rawData = await fetchDoneVisitorsRaw("all");
+      const data = mapVisitorData(rawData);
 
-      setMergedData(latestData);
-      setFilteredData(latestData);
+      setMergedData(data);
+      setAllDataLoaded(true);
+
+      sourceData = data;
+
+      console.log("Fetch visitor selesai");
+
     } catch (err) {
-      console.error("Error reset completed visitors:", err);
-      setFilteredData(mergedData);
+      console.error("fetch all error", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
+  const result = applyFilter(sourceData, keyword, startDate, endDate);
+  setFilteredData(result);
+};
 
-  const exportToExcel = () => {
-    if (filteredData.length === 0) {
-      alert("Tidak ada data untuk diexport!");
-      return;
-    }
+  const handleReset = () => {
+  setStartDate("");
+  setEndDate("");
+  setKeyword("");
 
-    const dataToExport = filteredData.map((r) => ({
-      Hari: r.hari,
-      Tanggal: r.tanggal,
-      Nama: r.nama,
-      Perusahaan: r.instansi,
-      "Nomor Telepon": r.noTelp,
-      Aktivitas: r.aktivitas,
-      "Waktu Masuk": r.jamMasuk
-        ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-",
-      "Waktu Keluar": r.jamKeluar
-        ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "-",
-      "Ruang Kerja": r.ruangKerja,
-      "No. VISIT/E SIK": r.keterangan,
-      Status: r.status,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "BukuTamu");
-
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-
-    const blob = new Blob([excelBuffer], {
-      type: "application/octet-stream",
-    });
-
-    saveAs(blob, `BukuTamu_${ttc}.xlsx`);
-  };
+  setMergedData(monthData);
+  setFilteredData(monthData);
+  setAllDataLoaded(false);
+};
 
   const openInfo = (r) => {
     setSelectedTamu(r.raw);
     setShowPopup(true);
   };
+
+  const exportToExcel = () => {
+  exportExcel(filteredData, ttc);
+};
 
   return (
     <div className="bt-wrap">
@@ -289,11 +112,8 @@ export default function BukuTamu() {
         <div className="bt-header">
           <div>
             <h3 className="security-title mb-1">
-              Buku Tamu (Completed) - {SITE.label}
+              Buku Tamu - {SITE.label}
             </h3>
-            <div className="bt-subtitle">
-              Data tamu selesai dengan pencarian sederhana dan tampilan lebih rapi
-            </div>
           </div>
         </div>
 
@@ -434,7 +254,7 @@ export default function BukuTamu() {
                     <td data-label="Foto Masuk" style={{ minWidth: 90 }}>
                       {r.dokumentasi_in && r.dokumentasi_in !== "-" ? (
                         <img
-                          src={`${apiHost}/storage/visitors/${r.dokumentasi_in}?t=${Date.now()}`}
+                          src={`${apiHost}/storage/visitors/${r.dokumentasi_in}?t=${r.id}`}
                           alt="foto masuk"
                           className="bt-thumb"
                           onError={(e) => {
@@ -458,7 +278,7 @@ export default function BukuTamu() {
                     <td data-label="Foto Keluar" style={{ minWidth: 90 }}>
                       {r.dokumentasi_out && r.dokumentasi_out !== "-" ? (
                         <img
-                          src={`${apiHost}/storage/visitors/${r.dokumentasi_out}?t=${Date.now()}`}
+                          src={`${apiHost}/storage/visitors/${r.dokumentasi_out}?t=${r.id}`}
                           alt="foto keluar"
                           className="bt-thumb"
                           onError={(e) => {

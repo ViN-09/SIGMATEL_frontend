@@ -2,7 +2,7 @@ import { useState } from "react";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./Sivisitor.css";
 import Landingsec from "./Landingsec";
-import BukuTamu from "./BukuTamu";
+import BukuTamu from "./TestBukuTamu";
 
 const VISITOR_MENU = [
     { menu: "Aproval-Tamu", icon: "bi-people" },

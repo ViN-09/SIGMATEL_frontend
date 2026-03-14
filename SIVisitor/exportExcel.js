@@ -1,51 +1,49 @@
 import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
-export function exportBukuTamuXLSX(filtered, toast) {
-  if (!filtered || filtered.length === 0) {
-    if (toast) toast("Tidak ada data untuk di-export", "info");
+export function exportExcel(data, ttc) {
+  if (!data || data.length === 0) {
+    alert("Tidak ada data untuk diexport!");
     return;
   }
 
-  const data = filtered.map((t) => {
-    const created = new Date(t?.created_at);
-    const invalidDate = Number.isNaN(created.getTime());
+  const dataToExport = data.map((r) => ({
+    Hari: r.hari,
+    Tanggal: r.tanggal,
+    Nama: r.nama,
+    Perusahaan: r.instansi,
+    "Nomor Telepon": r.noTelp,
+    Aktivitas: r.aktivitas,
+    "Waktu Masuk": r.jamMasuk
+      ? new Date(r.jamMasuk).toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "-",
+    "Waktu Keluar": r.jamKeluar
+      ? new Date(r.jamKeluar).toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "-",
+    "Ruang Kerja": r.ruangKerja,
+    "No. VISIT/E SIK": r.keterangan,
+    Status: r.status,
+  }));
 
-    const hari = invalidDate
-      ? ""
-      : created.toLocaleDateString("id-ID", { weekday: "long" });
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  const workbook = XLSX.utils.book_new();
 
-    const tanggal = invalidDate ? "" : created.toLocaleDateString("id-ID");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "BukuTamu");
 
-    const jam = invalidDate
-      ? ""
-      : created.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-
-    return {
-      Hari: hari,
-      Tanggal: tanggal,
-      Jam: jam,
-      Nama: t?.name ?? "",
-      Perusahaan: t?.company ?? "",
-      Telepon: t?.phone ?? "",
-      Aktivitas: t?.activity ?? "",
-      Ruang: t?.ruang_kerja ?? "",
-      "VISIT/E-SIK": t?.visit_id ?? "",
-      Status: t?.status ?? "",
-    };
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
   });
 
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "BukuTamu");
+  const blob = new Blob([excelBuffer], {
+    type: "application/octet-stream",
+  });
 
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-
-  XLSX.writeFile(wb, `buku_tamu_${y}-${m}-${d}_${hh}${mm}.xlsx`);
-
-  if (toast) toast("Export Excel berhasil");
+  saveAs(blob, `BukuTamu_${ttc}.xlsx`);
 }
