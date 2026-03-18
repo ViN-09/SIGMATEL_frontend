@@ -19,6 +19,23 @@ const UserTeling = {
   gambar: null,
   ttd: null,
 }
+const UserTelingBM = {
+  id: "MND24074311051",
+  Nama: "Djefli",
+  jabatan: "BM",
+  site: "TTC Teling",
+  gambar: null,
+  ttd: null,
+}
+
+const UserPanikiBM = {
+  id: "MND24074311051",
+  Nama: "Didit",
+  jabatan: "BM",
+  site: "TTC Paniki",
+  gambar: null,
+  ttd: null,
+}
 
 // ==============================
 // SITE HANDLER
@@ -31,6 +48,12 @@ export const getUSER = (type) => {
       break;
     case "teling":
       userValue = UserTeling;
+      break;
+    case "panikiBM":
+      userValue = UserPanikiBM;
+      break;
+    case "telingBM":
+      userValue = UserTelingBM;
       break;
     default:
       return null;
