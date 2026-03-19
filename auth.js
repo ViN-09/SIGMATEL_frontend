@@ -41,6 +41,13 @@ const UserPanikiBM = {
 // SITE HANDLER
 // ==============================
 export const getUSER = (type) => {
+  const stored = sessionStorage.getItem("userinfo");
+
+  // Jika sudah ada di sessionStorage, langsung return
+  if (!type && stored) {
+    return JSON.parse(stored);
+  }
+
   let userValue = null;
   switch (type) {
     case "paniki":
@@ -56,12 +63,15 @@ export const getUSER = (type) => {
       userValue = UserTelingBM;
       break;
     default:
-      return null;
+      // Jika sessionStorage kosong, return null
+      return stored ? JSON.parse(stored) : null;
   }
 
-  // Simpan ke sessionStorage
-  sessionStorage.setItem("userinfo", JSON.stringify(userValue));
-  // Return dari sessionStorage (biar konsisten)
+  // Simpan ke sessionStorage hanya kalau parameter valid
+  if (userValue) {
+    sessionStorage.setItem("userinfo", JSON.stringify(userValue));
+  }
+
   return JSON.parse(sessionStorage.getItem("userinfo"));
 };
 
@@ -82,9 +92,11 @@ export function sitesaperator(site) {
 
 export const getSITE = () => {
   clearAllSession("site"); // DEV MODE: paksa refresh
+  clearAllSession("ttc");
 
   try {
     const cachedSite = sessionStorage.getItem("site");
+    const cachedTtc = sessionStorage.getItem("ttc");
 
     if (cachedSite && cachedSite.trim() !== "") {
       return cachedSite.trim().toLowerCase();
@@ -102,6 +114,7 @@ export const getSITE = () => {
 
     const normalized = sitesaperator(site);
     sessionStorage.setItem("site", normalized);
+    sessionStorage.setItem("ttc", normalized);
 
     return normalized;
 
