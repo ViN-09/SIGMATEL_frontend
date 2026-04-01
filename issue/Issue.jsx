@@ -7,7 +7,7 @@ import { getUSER } from "../auth.js";
 import "./Issue.css";
 
 const Issue = () => {
-  const user = getUSER("teling");
+  const user = getUSER("paniki");
   const [issues, setIssues] = useState([]);
   const [selectedIssue, setSelectedIssue] = useState(null);
 
@@ -108,7 +108,7 @@ const Issue = () => {
   // ======================================================
   return (
     <div className="tsel-page-container">
-      <h1 className="tsel-page-title">Issue TTC Teling</h1>
+      <h1 className="tsel-page-title">Issue TTC Paniki</h1>
 
       {/* Filter */}
       <div className="issue-section-filter">
